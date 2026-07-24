@@ -5,7 +5,7 @@ CMD ["/bin/bash"]
 
 RUN rm -rf /home/user && ln -s /root /home/user
 
-RUN echo 'PS1="\[\033[01;32m\][container]\[\033[00m\] \[\033[01;34m\]\w\[\033[00m\]\$ "' >> /root/.bashrc
+RUN echo 'source /etc/container.bashrc' > /root/.bashrc
 
 ENV TZ=America/New_York
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone

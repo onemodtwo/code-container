@@ -1,6 +1,21 @@
 # container.bashrc — Runtime shell environment for code-container
 # Mounted at /etc/container.bashrc; edits take effect without rebuild.
 
+# --- Shell options ---
+shopt -s checkwinsize
+
+# --- History ---
+HISTCONTROL=ignoreboth
+HISTSIZE=10000
+HISTFILESIZE=20000
+
+# --- Bash completion ---
+if [[ -f /usr/share/bash-completion/bash_completion ]]; then
+  source /usr/share/bash-completion/bash_completion
+elif [[ -f /etc/bash_completion ]]; then
+  source /etc/bash_completion
+fi
+
 # --- Colored prompt ---
 __container_prompt() {
   local reset='\[\033[0m\]'
@@ -23,14 +38,14 @@ __container_prompt() {
 __container_prompt
 
 # --- Aliases ---
-alias l='ls --color=auto'
-alias la='ls -A --color=auto'
-alias ll='ls -alF --color=auto'
-alias lg='ls -alF --color=auto | grep -i'
-alias lt='ls -ltr --color=auto'
-alias ..='cd ..'
-alias ...='cd ../..'
-alias ....='cd ../../..'
+alias ls='ls --color=auto'
+alias la='ls -Alh'
+alias ll='ls -alh'
+alias lg='la | grep -i'
+alias lt='ls -lhtr'
+alias .1='cd ..'
+alias .2='cd ../..'
+alias .3='cd ../../..'
 
 # --- Environment activation helpers ---
 act() {
