@@ -7,7 +7,7 @@ Isolated environments for AI coding agents. One image, one container per project
 ## How it works
 
 - Your project directory is mounted **read-write by default** — overrideable to read-only per project
-- Configured data branches (seeded at install to `/data`, `/data2`) and non-hidden directories under `$HOME` are mounted **read-only** — the agent can browse and use them but cannot modify them
+- Configured data branches (default: none — add via `data_branches` in `config.json`) and non-hidden directories under `$HOME` are mounted **read-only** — the agent can browse and use them but cannot modify them
 - Hidden directories (`.ssh`, `.aws`, `.gnupg`, etc.) are **never mounted** — with the exception of language toolchain directories (`.nvm`, `.cargo`, `.rustup`, `.local`, `.pyenv`) which are mounted read-only when `mount_home_children` is true
 - Your AI tool's `settings.json` is **read-only inside the container** — the agent cannot change its own permissions
 - Your AI tool's conversation history and credentials are **shared with your host session** by default — continuity across host and container sessions for the same project
@@ -171,7 +171,7 @@ Created at install with all fields populated. Change a value here to apply it to
   "base_image": "ubuntu:24.04",
   "timezone": "America/New_York",
   "container_runtime": "podman",
-  "data_branches": ["/data", "/data2"],
+  "data_branches": [],
   "auth_mode": "shared",
   "history_mode": "shared",
   "network": "bridge",
@@ -422,7 +422,7 @@ The image includes `git`, `jq`, `ca-certificates`, and R runtime libraries (`lib
 
 | Host path                                                  | Container path                           | Mode                     | Controlled by                                                                   |
 | ---------------------------------------------------------- | ---------------------------------------- | ------------------------ | ------------------------------------------------------------------------------- |
-| `data_branches` (default: `/data`, `/data2`)               | Same path                                | read-only                | `config.json`                                                                   |
+| `data_branches` (default: none)                            | Same path                                | read-only                | `config.json`                                                                   |
 | Non-hidden dirs in `$HOME`                                 | Same path                                | read-only                | `mount_home_children` in `config.json` / `override.json`                        |
 | `~/.nvm`, `~/.cargo`, `~/.rustup`, `~/.local`, `~/.pyenv`  | Same path                                | read-only                | `mount_home_children` (toolchain exception — see below)                         |
 | `ssh_known_hosts_path`                                     | `/root/.ssh/known_hosts`                 | read-only                | `forward_ssh_agent` + `ssh_known_hosts_path` in `config.json` / `override.json` |
@@ -576,19 +576,18 @@ Set `forward_ssh_agent` to `false` in `config.json` to disable agent forwarding 
 
 ## Finding pre-built environments
 
-All of `/data`, `/data2`, and non-hidden `$HOME` directories are mounted at their original paths inside the container. Use standard shell tools to locate environments:
+Any paths configured in `data_branches` and non-hidden `$HOME` directories are mounted at their original paths inside the container. Use standard shell tools to locate environments:
 
 ```bash
-find /data -name "activate" 2>/dev/null | grep myenv
-ls /data2/envs/
+find ~ -name "activate" 2>/dev/null | grep myenv
 ```
 
 To activate manually:
 
 ```bash
-source /data/envs/myenv/bin/activate
+source ~/envs/myenv/bin/activate
 # or
-conda activate /data2/shared/envs/myenv
+conda activate ~/shared/envs/myenv
 ```
 
 ## Tool-specific behavior
@@ -696,7 +695,7 @@ To allow everything with no restrictions, set in `config.json`:
 
 ## Security
 
-- The project directory is the only writable mount by default — the agent cannot permanently modify `/data`, `/data2`, or your home directory. Set `project_readonly: true` in `override.json` to make it read-only too.
+- The project directory is the only writable mount by default — the agent cannot permanently modify your home directory or any `data_branches` paths. Set `project_readonly: true` in `override.json` to make it read-only too.
 - Hidden directories (`.ssh`, `.aws`, `.gnupg`, credentials) are never mounted — the only exceptions are language toolchain directories (`.nvm`, `.cargo`, `.rustup`, `.local`, `.pyenv`) which are mounted read-only. `~/.cargo` includes `credentials.toml` (crates.io API tokens); `~/.local` includes `~/.local/share` application state. These are accepted tradeoffs for toolchain usability — if this is a concern, add them to `extra_readonly` selectively instead and set `mount_home_children: false`
 - When `forward_ssh_agent` is `true`, the host's SSH agent socket and the configured `ssh_known_hosts_path` are accessible inside the container, giving code inside the container access to SSH credentials via the host agent and the ability to verify host keys. `Bash(ssh*)` is denied by default so the agent cannot be used for direct SSH sessions, but `git` operations over SSH and library-level SSH connections are not blocked by that rule. Set `"forward_ssh_agent": false` in `override.json` if this exposure is not acceptable for a specific project
 - All configuration is in `~/.code-container/` which is never mounted — an agent cannot read or modify it; `container run ~/.code-container/...` is rejected outright
