@@ -754,6 +754,26 @@ Edit `~/.code-container/projects/<name>-<hash>/override.json` and set `"network"
 
 Follow the [Tool permissions](#tool-permissions) section. Edit `~/.code-container/projects/<name>-<hash>/settings.json` on the host, then ask the user to run `container init [path]`.
 
+## Troubleshooting
+
+### Podman: `sd-bus call: Process org.freedesktop.systemd1 exited with status 1`
+
+Some crun builds (with `+SYSTEMD`) fail to communicate with systemd during container creation. Symptoms: every `podman run` or `container build` fails with an `Input/output error` at any `RUN` step.
+
+**Fix:** Install `runc` and configure podman to use it with cgroupfs:
+
+```bash
+sudo apt-get install -y runc
+mkdir -p ~/.config/containers
+cat > ~/.config/containers/containers.conf << 'EOF'
+[engine]
+cgroup_manager = "cgroupfs"
+oci_runtime = "runc"
+EOF
+```
+
+Verify with `podman run --rm ubuntu:24.04 echo hello`.
+
 ## Windows support
 
 Native Windows is **not supported**. The install script and container tooling require POSIX utilities (`find`, `sed`, etc.). Use **WSL** (Windows Subsystem for Linux) on Windows — install WSL with `wsl --install`, then follow the Linux instructions inside the WSL distribution.
