@@ -309,8 +309,8 @@ export function buildMounts(
 
   addMount(
     mountConfig.project_readonly
-      ? `${containerProjectPath}:${projectPath}:ro`
-      : `${containerProjectPath}:${projectPath}`,
+      ? `${projectPath}:${containerProjectPath}:ro`
+      : `${projectPath}:${containerProjectPath}`,
   );
 
   for (const extra of mountConfig.extra_readwrite) {

@@ -198,7 +198,7 @@ describe("createNewContainer", () => {
     expect(runCall.args).toContain("-w");
     expect(runCall.args).toContain("/root/foo");
     expect(runCall.args).toContain("--volume");
-    expect(runCall.args).toContain("/root/foo:/home/user/foo");
+    expect(runCall.args).toContain("/home/user/foo:/root/foo");
   });
 
   it("includes cliFlags in the argument list", () => {
@@ -458,7 +458,7 @@ describe("buildMounts", () => {
       "foo-abc12345",
       mc,
     );
-    expect(mounts).toContain("/root/foo:/home/user/foo");
+    expect(mounts).toContain("/home/user/foo:/root/foo");
   });
 
   it("mounts project read-only when configured", () => {
@@ -471,7 +471,7 @@ describe("buildMounts", () => {
       "foo-abc12345",
       mc,
     );
-    expect(mounts).toContain("/root/foo:/home/user/foo:ro");
+    expect(mounts).toContain("/home/user/foo:/root/foo:ro");
   });
 
   it("mounts extra_readonly paths", () => {
