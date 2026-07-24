@@ -1,0 +1,39 @@
+{
+  "base_image": "ubuntu:24.04",
+  "timezone": "UTC",
+  "container_runtime": "auto",
+  "data_branches": [],
+  "network": "bridge",
+  "keep_alive": false,
+  "mount_home_children": true,
+  "auth_mode": "shared",
+  "history_mode": "shared",
+  "penv_path": "",
+  "renv_path": "",
+  "extra_readonly": [],
+  "extra_readwrite": [],
+  "extra_ld_library_path": [],
+  "penv_pattern": "",
+  "renv_pattern": "",
+  "env_search_timeout_s": 10,
+  "project_symlink_mounts": "read",
+  "project_symlink_depth": 3,
+  "forward_ssh_agent": false,
+  "ssh_known_hosts_path": "",
+  "tool_permissions": {
+    "allow": [
+      "Bash(*)", "Read", "Write", "Edit", "MultiEdit",
+      "Glob", "Grep", "WebFetch", "WebSearch",
+      "Agent", "TodoRead", "TodoWrite", "NotebookRead", "NotebookEdit", "LSP"
+    ],
+    "deny": [
+      "Bash(curl*)",   "Bash(wget*)",    "Bash(pip*)",     "Bash(pip3*)",
+      "Bash(uv*)",     "Bash(cargo*)",   "Bash(npm*)",     "Bash(npx*)",
+      "Bash(yarn*)",   "Bash(pnpm*)",    "Bash(apt*)",     "Bash(apt-get*)",
+      "Bash(conda*)",  "Bash(mamba*)",   "Bash(micromamba*)",
+      "Bash(ssh*)",    "Bash(scp*)",     "Bash(sftp*)",    "Bash(rsync*)",
+      "Bash(nc*)",     "Bash(netcat*)",  "Bash(socat*)",   "Bash(ftp*)",
+      "Bash(telnet*)"
+    ]
+  }
+}

@@ -2,14 +2,19 @@ import * as clack from "@clack/prompts";
 import { ContainerClient } from "../container-client";
 import { SettingsStore } from "../config";
 import { Filesystem } from "../platform/fs";
+import { generateProjectDirName } from "../mount-config";
 import { resolveTarget, ResolvedTarget } from "./shared";
-import { Settings } from "../types";
 import { execInteractive, stopContainerIfLastSession } from "../container";
+import {
+  trackSessionStart,
+  trackSessionEnd,
+  getSessionDir,
+} from "../session";
 
 export function attachToContainer(
   runtime: ContainerClient,
-  settings: Settings,
   resolved: ResolvedTarget,
+  projectDirName: string,
   cliFlags: string[],
 ): void {
   if (!runtime.containerExists(resolved.containerName)) {
@@ -23,11 +28,14 @@ export function attachToContainer(
   }
 
   let stopped = false;
+  const sessionDir = getSessionDir(projectDirName);
+  const sessionFile = trackSessionStart(sessionDir);
 
   const cleanup = (): void => {
     if (stopped) return;
     stopped = true;
-    stopContainerIfLastSession(runtime, resolved.containerName);
+    trackSessionEnd(sessionFile);
+    stopContainerIfLastSession(runtime, resolved.containerName, sessionDir);
   };
 
   const signals: NodeJS.Signals[] = ["SIGINT", "SIGHUP", "SIGTERM"];
@@ -40,7 +48,8 @@ export function attachToContainer(
     runtime,
     resolved.containerName,
     resolved.projectName,
-    settings,
+    resolved.projectPath,
+    projectDirName,
     cliFlags,
   );
 
@@ -56,6 +65,7 @@ export function attachCommand(
   settingsStore: SettingsStore,
   fs: Filesystem,
   target: string | undefined,
+  projectDirName: string | undefined,
   cliFlags: string[] = [],
 ): void {
   const settingsResult = settingsStore.load();
@@ -63,10 +73,12 @@ export function attachCommand(
     clack.log.error("Failed to load settings");
     process.exit(1);
   }
-  const settings = settingsResult.value;
 
   const resolved = resolveTarget(fs, target);
   if (!resolved) process.exit(1);
 
-  attachToContainer(runtime, settings, resolved, cliFlags);
+  const resolvedProjectDirName = projectDirName
+    ?? generateProjectDirName(resolved.projectPath);
+
+  attachToContainer(runtime, resolved, resolvedProjectDirName, cliFlags);
 }

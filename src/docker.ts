@@ -1,114 +1,99 @@
 import * as clack from "@clack/prompts";
 import { ContainerClient } from "./container-client";
-import { SettingsStore, StateStore } from "./config";
+import { SettingsStore } from "./config";
 import { Filesystem } from "./platform/fs";
 import {
   APPDATA_DIR,
-  USER_DOCKERFILE_PATH,
-  CORE_DOCKERFILE_PATH,
-  TOOLS_DOCKERFILE_PATH,
-  HARNESS_DOCKERFILE_PATH,
+  DOCKERFILE_PATH,
 } from "./platform/paths";
-import {
-  CORE_IMAGE,
-  TOOLS_IMAGE,
-  HARNESS_IMAGE,
-  USER_IMAGE,
-  resolveCoreConfig,
-  generateDockerfileCore,
-} from "./dockerfile-core";
-import { generateDockerfileTools } from "./dockerfile-tools";
-import { generateDockerfileHarness } from "./dockerfile-harness";
-import { Result, BuildTarget } from "./types";
+import { loadGlobalConfig } from "./mount-config";
+import { Result } from "./types";
+import path from "path";
+import fs from "fs";
 
-const BUILD_ORDER: BuildTarget[] = ["full", "tools", "harness", "user"];
-function shouldBuild(target: BuildTarget, stage: BuildTarget): boolean {
-  return BUILD_ORDER.indexOf(target) <= BUILD_ORDER.indexOf(stage);
+const IMAGE_TAG = "latest";
+export const CONTAINER_IMAGE = `localhost/onemodtwo/code-container:${IMAGE_TAG}`;
+
+const TOOL_BUILD_ARG_MAP: Record<string, string> = {
+  python: "INSTALL_PYTHON",
+  bun: "INSTALL_BUN",
+  "enhanced-tools": "INSTALL_ENHANCED_TOOLS",
+  deno: "INSTALL_DENO",
+  rust: "INSTALL_RUST",
+  go: "INSTALL_GO",
+  uv: "INSTALL_UV",
+  gh: "INSTALL_GH",
+  aws: "INSTALL_AWS",
+  gcloud: "INSTALL_GCLOUD",
+  azure: "INSTALL_AZURE",
+  neovim: "INSTALL_NEOVIM",
+};
+
+const HARNESS_BUILD_ARG_MAP: Record<string, string> = {
+  claude: "INSTALL_CLAUDE",
+  opencode: "INSTALL_OPENCODE",
+  codex: "INSTALL_CODEX",
+  pi: "INSTALL_PI",
+  gemini: "INSTALL_GEMINI",
+  copilot: "INSTALL_COPILOT",
+  grok: "INSTALL_GROK",
+  cursor: "INSTALL_CURSOR",
+  nitro: "INSTALL_NITRO",
+  antigravity: "INSTALL_ANTIGRAVITY",
+};
+
+function copyManagedDockerfile(fsInstance: Filesystem): void {
+  const sourceDockerfile = path.resolve(__dirname, "..", "Dockerfile");
+  if (fs.existsSync(sourceDockerfile)) {
+    fsInstance.ensureAppdataDir();
+    fsInstance.secureWriteFile(
+      DOCKERFILE_PATH,
+      fs.readFileSync(sourceDockerfile, "utf-8"),
+    );
+  }
 }
-
-export const IMAGE_TAG = "latest";
-export const CONTAINER_IMAGE = `${USER_IMAGE}:${IMAGE_TAG}`;
 
 export function buildImage(
   runtime: ContainerClient,
   settingsStore: SettingsStore,
-  stateStore: StateStore,
-  fs: Filesystem,
-  target: BuildTarget,
+  _stateStore: unknown,
+  fsInstance: Filesystem,
 ): Result<void> {
-  const settingsResult = settingsStore.load();
-  if (!settingsResult.ok) return settingsResult;
-  const settings = settingsResult.value;
+  copyManagedDockerfile(fsInstance);
 
-  if (shouldBuild(target, "full")) {
-    const coreContent = generateDockerfileCore(
-      resolveCoreConfig(settings.dockerfileCore ?? {}),
-    );
-    fs.writeFileSync(CORE_DOCKERFILE_PATH, coreContent);
-    clack.log.info(`Building: ${CORE_IMAGE}`);
-    const coreResult = runtime.build(
-      CORE_DOCKERFILE_PATH,
-      `${CORE_IMAGE}:${IMAGE_TAG}`,
-      APPDATA_DIR,
-    );
-    if (!coreResult.ok) return coreResult;
+  if (!fs.existsSync(DOCKERFILE_PATH)) {
+    return { ok: false, error: "dockerfile_not_found" };
   }
 
-  if (shouldBuild(target, "tools")) {
-    const enabledToolIds = settings.enabledTools ?? [];
-    const toolsContent = generateDockerfileTools(enabledToolIds);
-    fs.writeFileSync(TOOLS_DOCKERFILE_PATH, toolsContent);
-    clack.log.info(`Building: ${TOOLS_IMAGE}`);
-    const toolsResult = runtime.build(
-      TOOLS_DOCKERFILE_PATH,
-      `${TOOLS_IMAGE}:${IMAGE_TAG}`,
-      APPDATA_DIR,
-    );
-    if (!toolsResult.ok) return toolsResult;
+  const config = loadGlobalConfig();
+  const buildArgs: string[] = [];
+
+  const enabledTools = config.enabledTools ?? [];
+  for (const id of enabledTools) {
+    const argName = TOOL_BUILD_ARG_MAP[id];
+    if (argName) {
+      buildArgs.push("--build-arg", `${argName}=true`);
+    }
   }
 
-  if (shouldBuild(target, "harness")) {
-    const enabledIds = settings.enabledHarnesses ?? [];
-    const harnessContent = generateDockerfileHarness(enabledIds);
-    fs.writeFileSync(HARNESS_DOCKERFILE_PATH, harnessContent);
-    clack.log.info(`Building: ${HARNESS_IMAGE}`);
-    const harnessResult = runtime.build(
-      HARNESS_DOCKERFILE_PATH,
-      `${HARNESS_IMAGE}:${IMAGE_TAG}`,
-      APPDATA_DIR,
-    );
-    if (!harnessResult.ok) return harnessResult;
+  const enabledHarnesses = config.enabledHarnesses ?? [];
+  for (const id of enabledHarnesses) {
+    const argName = HARNESS_BUILD_ARG_MAP[id];
+    if (argName) {
+      buildArgs.push("--build-arg", `${argName}=true`);
+    }
   }
 
-  clack.log.info(`Building: ${USER_IMAGE}`);
-  const userResult = runtime.build(
-    USER_DOCKERFILE_PATH,
-    `${USER_IMAGE}:${IMAGE_TAG}`,
+  clack.log.info("Building container image...");
+  const result = runtime.build(
+    DOCKERFILE_PATH,
+    CONTAINER_IMAGE,
     APPDATA_DIR,
+    buildArgs,
   );
-  if (!userResult.ok) return userResult;
+  if (!result.ok) return result;
 
-  clearBuildDirty(stateStore, target);
-  runtime.pruneImages(`label=aerovato.container=v3`);
+  runtime.pruneImages("label=onemodtwo.code-container=v3");
 
   return { ok: true, value: undefined };
-}
-
-function clearBuildDirty(stateStore: StateStore, target: BuildTarget): void {
-  const stateResult = stateStore.load();
-  if (!stateResult.ok) return;
-  const state = stateResult.value;
-  if (state.buildDirty === undefined) return;
-
-  const targetIdx = BUILD_ORDER.indexOf(target);
-  const dirtyIdx = BUILD_ORDER.indexOf(state.buildDirty);
-  if (targetIdx === -1 || dirtyIdx === -1) {
-    return;
-  }
-
-  if (targetIdx <= dirtyIdx) {
-    const updated = { ...state };
-    delete updated.buildDirty;
-    stateStore.save(updated);
-  }
 }

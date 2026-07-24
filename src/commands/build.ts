@@ -1,19 +1,16 @@
 import * as clack from "@clack/prompts";
 import { ContainerClient } from "../container-client";
-import { SettingsStore, StateStore } from "../config";
+import { SettingsStore } from "../config";
 import { Filesystem } from "../platform/fs";
 import { buildImage } from "../docker";
-import { BuildTarget } from "../types";
 
 export function buildCommand(
   runtime: ContainerClient,
   settingsStore: SettingsStore,
-  stateStore: StateStore,
   fs: Filesystem,
-  target: BuildTarget,
 ): void {
-  clack.log.info(`Building container image (target: ${target})`);
-  const result = buildImage(runtime, settingsStore, stateStore, fs, target);
+  clack.log.info("Building container image");
+  const result = buildImage(runtime, settingsStore, undefined, fs);
   if (!result.ok) {
     clack.log.error("Failed to build image");
     process.exit(1);

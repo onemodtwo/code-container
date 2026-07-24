@@ -1,16 +1,13 @@
 import { describe, it, expect } from "vitest";
 import path from "path";
 import os from "os";
+import fs from "fs";
 import {
   APPDATA_DIR,
   CONFIGS_DIR,
   TEMP_DIR,
-  SETTINGS_PATH,
   STATE_PATH,
   USER_DOCKERFILE_PATH,
-  CORE_DOCKERFILE_PATH,
-  TOOLS_DOCKERFILE_PATH,
-  HARNESS_DOCKERFILE_PATH,
   CONTAINER_PREFIX,
   homeDir,
   expandHomePath,
@@ -30,15 +27,9 @@ describe("path constants", () => {
   it("derives subpaths from APPDATA_DIR", () => {
     expect(CONFIGS_DIR).toBe(path.join(APPDATA_DIR, "configs"));
     expect(TEMP_DIR).toBe(path.join(APPDATA_DIR, "temp"));
-    expect(SETTINGS_PATH).toBe(path.join(APPDATA_DIR, "settings.json"));
     expect(STATE_PATH).toBe(path.join(TEMP_DIR, "state.json"));
     expect(USER_DOCKERFILE_PATH).toBe(
       path.join(APPDATA_DIR, "Dockerfile.User"),
-    );
-    expect(CORE_DOCKERFILE_PATH).toBe(path.join(TEMP_DIR, "Dockerfile.Core"));
-    expect(TOOLS_DOCKERFILE_PATH).toBe(path.join(TEMP_DIR, "Dockerfile.Tools"));
-    expect(HARNESS_DOCKERFILE_PATH).toBe(
-      path.join(TEMP_DIR, "Dockerfile.Harness"),
     );
   });
 });
@@ -190,5 +181,40 @@ describe("buildBindMount", () => {
         "type=bind,source=C:/Users/foo,target=/root/foo,readonly",
       );
     });
+  });
+});
+
+describe("generateContainerName with symlinks", () => {
+  it("resolves symlinks so a path and its symlink produce the same container name", () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "code-container-test-"));
+    const realDir = path.join(tmpDir, "real-project");
+    const symlinkPath = path.join(tmpDir, "link-project");
+    fs.mkdirSync(realDir, { recursive: true });
+    fs.symlinkSync(realDir, symlinkPath);
+
+    const nameFromReal = generateContainerName(realDir);
+    const nameFromSymlink = generateContainerName(symlinkPath);
+    expect(nameFromSymlink).toBe(nameFromReal);
+
+    fs.unlinkSync(symlinkPath);
+    fs.rmSync(tmpDir, { recursive: true });
+  });
+
+  it("resolves nested symlinks", () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "code-container-test-"));
+    const realDir = path.join(tmpDir, "actual");
+    const link1 = path.join(tmpDir, "link1");
+    const link2 = path.join(tmpDir, "link2");
+    fs.mkdirSync(realDir, { recursive: true });
+    fs.symlinkSync(realDir, link1);
+    fs.symlinkSync(link1, link2);
+
+    const nameFromReal = generateContainerName(realDir);
+    const nameFromLink2 = generateContainerName(link2);
+    expect(nameFromLink2).toBe(nameFromReal);
+
+    fs.unlinkSync(link2);
+    fs.unlinkSync(link1);
+    fs.rmSync(tmpDir, { recursive: true });
   });
 });

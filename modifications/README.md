@@ -174,31 +174,15 @@ Created at install with all fields populated. Change a value here to apply it to
   "network": "bridge",
   "keep_alive": false,
   "mount_home_children": true,
-  "penv_path": "",
-  "renv_path": "",
+  "penv_path": "/discovered/path/to/snapfish/penv",
+  "renv_path": "/discovered/path/to/snapfish/renv",
   "extra_readonly":           [],
   "extra_readwrite":          [],
   "extra_ld_library_path":    [],
   "project_symlink_mounts":  "read",
   "project_symlink_depth":   3,
   "forward_ssh_agent":       true,
-  "ssh_known_hosts_path":    "/discovered/path/to/known_hosts",
-  "tool_permissions": {
-    "allow": [
-      "Bash(*)", "Read", "Write", "Edit", "MultiEdit",
-      "Glob", "Grep", "WebFetch", "WebSearch",
-      "Agent", "TodoRead", "TodoWrite", "NotebookRead", "NotebookEdit", "LSP"
-    ],
-    "deny": [
-      "Bash(curl*)",   "Bash(wget*)",    "Bash(pip*)",     "Bash(pip3*)",
-      "Bash(uv*)",     "Bash(cargo*)",   "Bash(npm*)",     "Bash(npx*)",
-      "Bash(yarn*)",   "Bash(pnpm*)",    "Bash(apt*)",     "Bash(apt-get*)",
-      "Bash(conda*)",  "Bash(mamba*)",   "Bash(micromamba*)",
-      "Bash(ssh*)",    "Bash(scp*)",     "Bash(sftp*)",    "Bash(rsync*)",
-      "Bash(nc*)",     "Bash(netcat*)",  "Bash(socat*)",   "Bash(ftp*)",
-      "Bash(telnet*)"
-    ]
-  }
+  "ssh_known_hosts_path":    "/discovered/path/to/known_hosts"
 }
 ```
 
@@ -217,7 +201,7 @@ Created at install with all fields populated. Change a value here to apply it to
 | `network` | Yes | Docker/Podman network mode. `"bridge"` required for API access. Use `"none"` to disable. |
 | `keep_alive` | Yes | When `true`, container keeps running after you exit the shell. |
 | `mount_home_children` | Yes | Mount non-hidden directories under `$HOME` read-only, plus language toolchain directories (`.nvm`, `.cargo`, `.rustup`, `.local`, `.pyenv`). |
-| `penv_path` | Yes | Path to the Python environment. Relative paths are resolved against the project directory. Set to `.venv` for a project-local venv, or an absolute path for a shared environment. Empty string (default) means no Python environment configured. |
+| `penv_path` | Yes | Path to the Python environment. Discovered at install; edit if not found or to change. |
 | `renv_path` | Yes | Path to the R environment. Discovered at install; edit if not found or to change. |
 | `extra_readonly` | Yes — additive | Additional paths to mount read-only. Entries may be `"path"` (symmetric) or `"hostPath:containerPath"` (asymmetric, e.g. `"/home/user/.foo:/root/.foo"`). Note: paths containing a literal `:` character are not supported. |
 | `extra_readwrite` | Yes — additive | Additional paths to mount read-write. Same `"path"` or `"hostPath:containerPath"` syntax as `extra_readonly`. |
@@ -354,11 +338,6 @@ Checked into the repo. Every field in this file is written verbatim into `~/.cod
 | `mount_home_children` | Mount non-hidden directories under `$HOME` read-only, plus language toolchain directories (`.nvm`, `.cargo`, `.rustup`, `.local`, `.pyenv`). |
 | `auth_mode` | `"shared"` or `"per_project"`. See [Auth and re-authentication](#auth-and-re-authentication). |
 | `history_mode` | `"shared"` or `"isolated"`. See [Session history](#session-history). |
-| `penv_path` | Path to the Python environment. Relative paths are resolved against the project directory. Set to `.venv` for a project-local venv, or an absolute path for a shared environment. Empty string (default) means no Python environment configured. |
-| `renv_path` | Path to the R environment. Discovered at install; edit if not found or to change. Empty string means not discovered. |
-| `extra_readonly` | Additional paths to mount read-only. Entries may be `"path"` or `"hostPath:containerPath"`. |
-| `extra_readwrite` | Additional paths to mount read-write. Same syntax as `extra_readonly`. |
-| `extra_ld_library_path` | Directories to mount read-only and prepend to `LD_LIBRARY_PATH` inside the container. |
 | `penv_pattern` | Glob pattern used to search for the Python environment at install time. |
 | `renv_pattern` | Glob pattern used to search for the R environment at install time. |
 | `env_search_timeout_s` | How many seconds to spend searching for `penv`/`renv` at install time before giving up. |
@@ -499,7 +478,9 @@ act     # activate Python and/or R environments
 deact   # deactivate (also aliased as quit)
 ```
 
-`penv_path` and `renv_path` are empty by default. Set them in `config.json` (global) or `override.json` (per-project) to enable environment activation. Relative paths are resolved against the project directory — e.g. `"penv_path": ".venv"` points to `<project>/.venv`. To override for a specific project, set them in that project's `override.json`.
+At install time, the tool searches `/data`, `/data2`, and `$HOME` for paths matching the patterns in `install.json` (`*/snapfish/penv/bin/activate` and `*/snapfish/renv/bin/activate` by default) and records the found paths as `penv_path` and `renv_path` in `config.json`. These paths are passed into the container as environment variables at runtime — `act` uses them directly.
+
+If paths were not found at install, or you want to point to a different environment, edit `penv_path` and/or `renv_path` in `config.json`. To override for a specific project, set them in that project's `override.json`.
 
 Unlike Python (`penv_path`), R does not have interpreter symlink auto-detection. If your `renv_path` points outside the standard data branches and home directory, the renv directory itself is auto-mounted if not already covered. However, a site-installed R interpreter (e.g. at `/opt/R/3.3.1`) that the renv links against must still be added to `extra_readonly` explicitly.
 

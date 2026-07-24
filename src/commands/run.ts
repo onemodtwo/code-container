@@ -6,6 +6,7 @@ import { resolveTarget, ensureImageReady } from "./shared";
 import { createContainer } from "./create";
 import { attachToContainer } from "./attach";
 import { maybeCheckForUpdate } from "../update-check";
+import { generateProjectDirName } from "../mount-config";
 import pkg from "../../package.json";
 
 export async function runCommand(
@@ -28,13 +29,15 @@ export async function runCommand(
 
   const updateInfo = await maybeCheckForUpdate(stateStore, pkg.version);
 
-  await ensureImageReady(runtime, settingsStore, stateStore, fs);
+  await ensureImageReady(runtime, settingsStore, fs);
+
+  const projectDirName = generateProjectDirName(resolved.projectPath);
 
   if (!runtime.containerExists(resolved.containerName)) {
     createContainer(fs, runtime, settings, resolved, cliFlags);
-    attachToContainer(runtime, settings, resolved, []);
+    attachToContainer(runtime, resolved, projectDirName, cliFlags);
   } else {
-    attachToContainer(runtime, settings, resolved, cliFlags);
+    attachToContainer(runtime, resolved, projectDirName, cliFlags);
   }
 
   if (updateInfo) {

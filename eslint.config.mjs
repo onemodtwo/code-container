@@ -11,7 +11,6 @@ export default tseslint.config(
       "node_modules/",
       "__mocks__/",
       "scripts/*.js",
-      "website/.astro/",
     ],
   },
   eslint.configs.recommended,

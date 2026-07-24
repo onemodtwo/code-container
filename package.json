@@ -1,16 +1,21 @@
 {
-  "name": "@aerovato/container",
+  "name": "@onemodtwo/code-container",
   "version": "3.5.1",
-  "description": "Manage isolated Docker containers for running coding tools on different projects",
+  "description": "Manage isolated containers for running coding tools on different projects",
   "main": "dist/js/main.js",
   "bin": {
     "container": "dist/js/main.js"
   },
   "files": [
     "dist/js",
-    "dist/package.json"
+    "dist/package.json",
+    "scripts/postinstall.js",
+    "install.json",
+    "container.bashrc",
+    "Dockerfile"
   ],
   "scripts": {
+    "postinstall": "node scripts/postinstall.js",
     "build": "npm run build:js && npm run build:binary",
     "build:js": "sh scripts/build-js.sh",
     "build:binary": "sh scripts/build-binary.sh",
@@ -21,36 +26,30 @@
     "typecheck": "tsc --project tsconfig.test.json",
     "test": "vitest run",
     "start": "node dist/js/main.js",
-    "website:dev": "astro dev --root ./website --host",
-    "website:build": "astro build --root ./website",
-    "website:preview": "astro preview --root ./website --host",
     "lint": "eslint .",
     "format": "prettier --write --ignore-unknown .",
     "precommit": "bash scripts/precommit.sh",
     "prepare": "husky",
     "install-local": "npm run clean && npm run build && npm link"
   },
-  "author": "kevinMEH",
-  "license": "MIT",
+  "author": "kevinMEH, onemodtwo",
+  "license": "BSD-3-Clause",
   "publishConfig": {
     "access": "public"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/aerovato/container.git"
+    "url": "git+https://github.com/onemodtwo/code-container.git"
   },
-  "bugs": "https://github.com/aerovato/container/issues",
-  "homepage": "https://github.com/aerovato/container",
+  "bugs": "https://github.com/onemodtwo/code-container/issues",
+  "homepage": "https://github.com/onemodtwo/code-container",
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@tailwindcss/vite": "^4.3.2",
     "@types/node": "^20.19.37",
-    "astro": "^7.0.7",
     "eslint": "^10.3.0",
     "husky": "^9.1.7",
     "memfs": "^4.57.3",
     "prettier": "^3.8.3",
-    "tailwindcss": "^4.3.2",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.59.1",
     "vitest": "^4.1.5"
@@ -61,6 +60,7 @@
   },
   "keywords": [
     "docker",
+    "podman",
     "container",
     "development",
     "cli",

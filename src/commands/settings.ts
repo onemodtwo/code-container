@@ -1,13 +1,12 @@
 import * as clack from "@clack/prompts";
 import { ContainerClient } from "../container-client";
-import { SettingsStore, StateStore } from "../config";
+import { SettingsStore } from "../config";
 import { Filesystem } from "../platform/fs";
 import { Executor } from "../platform/shell";
 import { RuntimeBin } from "../types";
 import { HARNESS_PACKS } from "../harness-packs";
 import { TOOL_PACKS } from "../tool-packs";
 import { buildImage } from "../docker";
-import { BuildTarget } from "../types";
 import { migrateToolConfigs } from "../onboarding";
 
 type SettingsAction = "harnesses" | "tools" | "runtime" | "mounts" | "done";
@@ -19,7 +18,6 @@ function formatList(items: string[]): string {
 export async function settingsCommand(
   executor: Executor,
   settingsStore: SettingsStore,
-  stateStore: StateStore,
   fs: Filesystem,
 ): Promise<void> {
   const result = settingsStore.load();
@@ -161,42 +159,29 @@ export async function settingsCommand(
     || currentTools.some((v, i) => v !== initialToolsSorted[i]);
 
   if (harnessesChanged || toolsChanged) {
-    const dirtyTarget = toolsChanged ? "tools" : "harness";
-    const rebuildChoice = await clack.select({
+    const rebuildChoice = await clack.confirm({
       message: "Configuration changed. Rebuild the image now?",
-      options: [
-        { value: "full", label: "Full Rebuild" },
-        { value: "tools", label: "Tools & Harness Rebuild" },
-        { value: "harness", label: "Harness Rebuild" },
-        { value: "skip", label: "Skip (will rebuild on next run)" },
-      ],
+      initialValue: true,
     });
 
-    if (clack.isCancel(rebuildChoice) || rebuildChoice === "skip") {
-      const stateResult = stateStore.load();
-      const state = stateResult.ok ? stateResult.value : {};
-      stateStore.save({ ...state, buildDirty: dirtyTarget });
-    } else if (!settings.runtime) {
-      clack.log.error("No container runtime configured. Image not rebuilt.");
-      const stateResult = stateStore.load();
-      const state = stateResult.ok ? stateResult.value : {};
-      stateStore.save({ ...state, buildDirty: dirtyTarget });
-    } else {
-      const runtime = new ContainerClient(executor, settings.runtime);
-      const target = rebuildChoice as BuildTarget;
-      clack.log.info(`Building container image (target: ${target})`);
-      const buildResult = buildImage(
-        runtime,
-        settingsStore,
-        stateStore,
-        fs,
-        target,
-      );
-      if (!buildResult.ok) {
-        clack.log.error("Failed to build image");
-        clack.log.warn("Run 'container build' manually to retry.");
+    if (!clack.isCancel(rebuildChoice) && rebuildChoice) {
+      if (!settings.runtime) {
+        clack.log.error("No container runtime configured. Image not rebuilt.");
       } else {
-        clack.log.success("Image built successfully");
+        const runtime = new ContainerClient(executor, settings.runtime);
+        clack.log.info("Building container image");
+        const buildResult = buildImage(
+          runtime,
+          settingsStore,
+          undefined,
+          fs,
+        );
+        if (!buildResult.ok) {
+          clack.log.error("Failed to build image");
+          clack.log.warn("Run 'container build' manually to retry.");
+        } else {
+          clack.log.success("Image built successfully");
+        }
       }
     }
   }

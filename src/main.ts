@@ -5,7 +5,7 @@ import fs from "fs";
 import * as clack from "@clack/prompts";
 import { SettingsStore, StateStore } from "./config";
 import { Filesystem } from "./platform/fs";
-import { SETTINGS_PATH, STATE_PATH } from "./platform/paths";
+import { STATE_PATH, CONFIG_JSON_PATH } from "./platform/paths";
 import { ContainerClient } from "./container-client";
 import {
   Executor,
@@ -27,7 +27,7 @@ import { listCommand } from "./commands/list";
 import { settingsCommand } from "./commands/settings";
 import { upgradeCommand } from "./commands/upgrade";
 import { stopOrphanedContainers } from "./container";
-import { runMigration, runSetup } from "./setup";
+import { runSetup } from "./setup";
 import pkg from "../package.json";
 
 const executor: Executor = createExecutor();
@@ -64,9 +64,8 @@ async function main(): Promise<void> {
   }
 
   const fsReader = new Filesystem(fs);
-  runMigration(fsReader);
   runSetup(fsReader);
-  const settingsStore = new SettingsStore(fsReader, SETTINGS_PATH);
+  const settingsStore = new SettingsStore(fsReader, CONFIG_JSON_PATH);
   const stateStore = new StateStore(fsReader, STATE_PATH);
 
   if (parsed.command === "upgrade") {
@@ -110,7 +109,7 @@ async function main(): Promise<void> {
 
   switch (parsed.command) {
     case "settings":
-      await settingsCommand(executor, settingsStore, stateStore, fsReader);
+      await settingsCommand(executor, settingsStore, fsReader);
       return;
   }
 
@@ -141,7 +140,7 @@ async function main(): Promise<void> {
       listCommand(runtime);
       return;
     case "build":
-      buildCommand(runtime, settingsStore, stateStore, fsReader, parsed.target);
+      buildCommand(runtime, settingsStore, fsReader);
       return;
     case "stop":
       stopCommand(runtime, parsed.target);
@@ -163,7 +162,6 @@ async function main(): Promise<void> {
       await createCommand(
         runtime,
         settingsStore,
-        stateStore,
         fsReader,
         parsed.target,
         parsed.cliFlags,
@@ -175,6 +173,7 @@ async function main(): Promise<void> {
         settingsStore,
         fsReader,
         parsed.target,
+        undefined,
         parsed.cliFlags,
       );
       return;

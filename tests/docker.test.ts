@@ -7,29 +7,20 @@ import { Executor } from "../src/platform/shell";
 import { FsReader, Filesystem } from "../src/platform/fs";
 import {
   APPDATA_DIR,
-  TEMP_DIR,
   CONFIGS_DIR,
-  CORE_DOCKERFILE_PATH,
-  TOOLS_DOCKERFILE_PATH,
-  HARNESS_DOCKERFILE_PATH,
+  CONFIG_JSON_PATH,
+  PROJECTS_DIR,
+  CONTAINER_BASHRC_PATH,
 } from "../src/platform/paths";
-import { SettingsStore, StateStore } from "../src/config";
+import { SettingsStore } from "../src/config";
 import { buildImage } from "../src/docker";
-import {
-  generateDockerfileCore,
-  resolveCoreConfig,
-  DEFAULT_PROMPT_COMMAND,
-  DEFAULT_CORE_COMMANDS,
-} from "../src/dockerfile-core";
-import { generateDockerfileHarness } from "../src/dockerfile-harness";
-import { generateDockerfileTools } from "../src/dockerfile-tools";
 import {
   stopContainerIfLastSession,
   createNewContainer,
-  getMounts,
+  buildMounts,
   stopOrphanedContainers,
 } from "../src/container";
-import { Settings } from "../src/types";
+import { MountConfig } from "../src/mount-config";
 
 vi.mock("fs");
 
@@ -143,62 +134,47 @@ describe("Runtime", () => {
   });
 });
 
-describe("attachedSessionCount", () => {
-  it("returns 0 when docker top fails", () => {
-    const runtime = new ContainerClient(mockExecutor, "docker");
-    enqueue({ status: 1 });
-    expect(runtime.attachedSessionCount("container-foo-abc12345")).toBe(0);
-  });
-
-  it("counts bash sessions", () => {
-    const runtime = new ContainerClient(mockExecutor, "docker");
-    enqueue({
-      status: 0,
-      stdout:
-        "UID PID PPID C STIME TTY TIME CMD\n"
-        + "root 1 0 0 14:00 ? 00:00 sleep infinity\n"
-        + "root 222 1 0 14:01 pts/0 00:00 /bin/bash\n"
-        + "root 333 1 0 14:02 pts/1 00:00 /bin/bash\n",
-    });
-    expect(runtime.attachedSessionCount("container-foo-abc12345")).toBe(2);
-  });
-
-  it("does not count non-bash processes", () => {
-    const runtime = new ContainerClient(mockExecutor, "docker");
-    enqueue({
-      status: 0,
-      stdout: "root 1 0 0 14:00 ? 00:00 sleep infinity\nother process\n",
-    });
-    expect(runtime.attachedSessionCount("container-foo-abc12345")).toBe(0);
-  });
-});
-
 describe("stopContainerIfLastSession", () => {
-  it("stops when no other sessions", () => {
+  function makeSessionDir(): string {
+    const dir = path.join(APPDATA_DIR, "projects", "foo-test", "sessions");
+    fs.mkdirSync(dir, { recursive: true });
+    return dir;
+  }
+
+  it("stops when no sessions exist", () => {
     const runtime = new ContainerClient(mockExecutor, "docker");
-    enqueue({ status: 0, stdout: "root 1 0 0 14:00 ? 00:00 sleep infinity\n" });
+    const sessionDir = makeSessionDir();
     enqueue({ status: 0 });
-    stopContainerIfLastSession(runtime, "container-foo-abc12345");
+    stopContainerIfLastSession(runtime, "container-foo-abc12345", sessionDir);
     const stopCall = calls.find(c => c.args[0] === "stop");
     expect(stopCall).toBeDefined();
   });
 
-  it("skips stop when other sessions exist", () => {
+  it("skips stop when sessions are active", () => {
     const runtime = new ContainerClient(mockExecutor, "docker");
-    enqueue({
-      status: 0,
-      stdout: "root 222 1 0 14:01 pts/0 00:00 /bin/bash\n",
-    });
-    stopContainerIfLastSession(runtime, "container-foo-abc12345");
+    const sessionDir = makeSessionDir();
+    // Write a lock file for the current process
+    const sessionFile = path.join(sessionDir, `session-${process.pid}`);
+    fs.writeFileSync(sessionFile, String(process.pid));
+    stopContainerIfLastSession(runtime, "container-foo-abc12345", sessionDir);
     const stopCall = calls.find(c => c.args[0] === "stop");
     expect(stopCall).toBeUndefined();
+    // Clean up
+    fs.unlinkSync(sessionFile);
   });
 });
 
 describe("createNewContainer", () => {
+  function seedConfig() {
+    fs.mkdirSync(APPDATA_DIR, { recursive: true });
+    fs.mkdirSync(PROJECTS_DIR, { recursive: true });
+    fs.mkdirSync(path.join(PROJECTS_DIR, "foo-a1b2c3d4"), { recursive: true });
+    fs.writeFileSync(CONFIG_JSON_PATH, "{}\n");
+  }
+
   it("constructs correct docker run arguments", () => {
+    seedConfig();
     const runtime = new ContainerClient(mockExecutor, "docker");
-    const settings: Settings = {};
     enqueue({ status: 0 });
 
     const result = createNewContainer(
@@ -207,7 +183,7 @@ describe("createNewContainer", () => {
       "container-foo-abc12345",
       "foo",
       "/home/user/foo",
-      settings,
+      "foo-a1b2c3d4",
       [],
     );
 
@@ -223,14 +199,12 @@ describe("createNewContainer", () => {
     expect(runCall.args).toContain("-w");
     expect(runCall.args).toContain("/root/foo");
     expect(runCall.args).toContain("--mount");
-    expect(runCall.args).toContain(
-      "type=bind,source=/home/user/foo,target=/root/foo",
-    );
+    expect(runCall.args).toContain("/root/foo:/home/user/foo");
   });
 
   it("includes cliFlags in the argument list", () => {
+    seedConfig();
     const runtime = new ContainerClient(mockExecutor, "docker");
-    const settings: Settings = {};
     enqueue({ status: 0 });
 
     createNewContainer(
@@ -239,7 +213,7 @@ describe("createNewContainer", () => {
       "container-foo-abc12345",
       "foo",
       "/home/user/foo",
-      settings,
+      "foo-a1b2c3d4",
       ["-p", "8080:80"],
     );
 
@@ -249,8 +223,8 @@ describe("createNewContainer", () => {
   });
 
   it("returns failure on non-zero exit", () => {
+    seedConfig();
     const runtime = new ContainerClient(mockExecutor, "docker");
-    const settings: Settings = {};
     enqueue({ status: 1 });
 
     const result = createNewContainer(
@@ -259,376 +233,384 @@ describe("createNewContainer", () => {
       "c",
       "p",
       "/path",
-      settings,
+      "path-a1b2c3d4",
       [],
     );
     expect(result.ok).toBe(false);
+  });
+
+  it("includes --security-opt=no-new-privileges for docker", () => {
+    seedConfig();
+    const runtime = new ContainerClient(mockExecutor, "docker");
+    enqueue({ status: 0 });
+
+    createNewContainer(
+      fsReader,
+      runtime,
+      "container-foo-abc12345",
+      "foo",
+      "/home/user/foo",
+      "foo-a1b2c3d4",
+      [],
+    );
+
+    const runCall = calls[calls.length - 1];
+    expect(runCall.args).toContain("--security-opt");
+    expect(runCall.args).toContain("no-new-privileges");
+    // docker should NOT have --group-add keep-groups
+    expect(runCall.args).not.toContain("keep-groups");
+  });
+
+  it("includes --group-add=keep-groups for podman", () => {
+    seedConfig();
+    const runtime = new ContainerClient(mockExecutor, "podman");
+    enqueue({ status: 0 });
+
+    createNewContainer(
+      fsReader,
+      runtime,
+      "container-foo-abc12345",
+      "foo",
+      "/home/user/foo",
+      "foo-a1b2c3d4",
+      [],
+    );
+
+    const runCall = calls[calls.length - 1];
+    expect(runCall.args).toContain("--security-opt");
+    expect(runCall.args).toContain("no-new-privileges");
+    expect(runCall.args).toContain("--group-add");
+    expect(runCall.args).toContain("keep-groups");
+  });
+
+  it("sets PENV_PATH and RENV_PATH env vars from mount config", () => {
+    seedConfig();
+    fs.writeFileSync(
+      CONFIG_JSON_PATH,
+      JSON.stringify({ penv_path: "/home/user/.venvs/myenv", renv_path: "/home/user/.renv" }) + "\n",
+    );
+    fs.mkdirSync("/home/user/.venvs/myenv", { recursive: true });
+    fs.mkdirSync("/home/user/foo", { recursive: true });
+    const runtime = new ContainerClient(mockExecutor, "docker");
+    enqueue({ status: 0 });
+
+    createNewContainer(
+      fsReader,
+      runtime,
+      "container-foo-abc12345",
+      "foo",
+      "/home/user/foo",
+      "foo-a1b2c3d4",
+      [],
+    );
+
+    const runCall = calls[calls.length - 1];
+    expect(runCall.args).toContain("PENV_PATH=/home/user/.venvs/myenv");
+    expect(runCall.args).toContain("RENV_PATH=/home/user/.renv");
+  });
+
+  it("does not set PENV_PATH or RENV_PATH when paths are empty", () => {
+    seedConfig();
+    const runtime = new ContainerClient(mockExecutor, "docker");
+    enqueue({ status: 0 });
+
+    createNewContainer(
+      fsReader,
+      runtime,
+      "container-foo-abc12345",
+      "foo",
+      "/home/user/foo",
+      "foo-a1b2c3d4",
+      [],
+    );
+
+    const runCall = calls[calls.length - 1];
+    expect(runCall.args).not.toContain("PENV_PATH=");
+    expect(runCall.args).not.toContain("RENV_PATH=");
   });
 });
 
 describe("buildImage", () => {
   function seedDirs() {
     fs.mkdirSync(APPDATA_DIR, { recursive: true });
-    fs.mkdirSync(TEMP_DIR, { recursive: true });
-    fs.writeFileSync(
-      path.join(APPDATA_DIR, "Dockerfile.User"),
-      "FROM localhost/aerovato/container-v3-harness:latest",
-    );
+    fs.mkdirSync(CONFIGS_DIR, { recursive: true });
+    fs.writeFileSync(CONFIG_JSON_PATH, "{}\n");
+    fs.writeFileSync(path.join(APPDATA_DIR, "Dockerfile"), "FROM ubuntu:24.04\n");
   }
 
   function makeStores() {
     const settingsStore = new SettingsStore(
       fsReader,
-      path.join(APPDATA_DIR, "settings.json"),
+      CONFIG_JSON_PATH,
     );
-    const stateStore = new StateStore(
-      fsReader,
-      path.join(TEMP_DIR, "state.json"),
-    );
-    return { settingsStore, stateStore };
+    return { settingsStore };
   }
 
-  describe("full target", () => {
-    it("builds all 4 stages", () => {
-      seedDirs();
-      const runtime = new ContainerClient(mockExecutor, "docker");
-      const { settingsStore, stateStore } = makeStores();
-      enqueue({ status: 0 });
-      enqueue({ status: 0 });
-      enqueue({ status: 0 });
-      enqueue({ status: 0 });
-      enqueue({ status: 0 });
+  it("builds image with single Dockerfile", () => {
+    seedDirs();
+    const runtime = new ContainerClient(mockExecutor, "docker");
+    const { settingsStore } = makeStores();
+    enqueue({ status: 0 });
 
-      const result = buildImage(
-        runtime,
-        settingsStore,
-        stateStore,
-        fsReader,
-        "full",
-      );
-      expect(result.ok).toBe(true);
+    const result = buildImage(runtime, settingsStore, undefined, fsReader);
+    expect(result.ok).toBe(true);
 
-      const builds = calls.filter(c => c.args[0] === "build");
-      expect(builds).toHaveLength(4);
-    });
-
-    it("generates Dockerfile.Core and Dockerfile.Harness to temp", () => {
-      seedDirs();
-      const runtime = new ContainerClient(mockExecutor, "docker");
-      const { settingsStore, stateStore } = makeStores();
-      enqueue({ status: 0 });
-      enqueue({ status: 0 });
-      enqueue({ status: 0 });
-      enqueue({ status: 0 });
-
-      buildImage(runtime, settingsStore, stateStore, fsReader, "full");
-
-      expect(fs.existsSync(CORE_DOCKERFILE_PATH)).toBe(true);
-      expect(fs.existsSync(TOOLS_DOCKERFILE_PATH)).toBe(true);
-      expect(fs.existsSync(HARNESS_DOCKERFILE_PATH)).toBe(true);
-    });
+    const builds = calls.filter(c => c.args[0] === "build");
+    expect(builds).toHaveLength(1);
   });
 
-  describe("harness target", () => {
-    it("builds 2 stages (harness, user)", () => {
-      seedDirs();
-      const runtime = new ContainerClient(mockExecutor, "docker");
-      const { settingsStore, stateStore } = makeStores();
-      enqueue({ status: 0 });
-      enqueue({ status: 0 });
-      enqueue({ status: 0 });
+  it("copies managed Dockerfile to APPDATA_DIR", () => {
+    seedDirs();
+    const runtime = new ContainerClient(mockExecutor, "docker");
+    const { settingsStore } = makeStores();
+    enqueue({ status: 0 });
 
-      const result = buildImage(
-        runtime,
-        settingsStore,
-        stateStore,
-        fsReader,
-        "harness",
-      );
-      expect(result.ok).toBe(true);
+    buildImage(runtime, settingsStore, undefined, fsReader);
 
-      const builds = calls.filter(c => c.args[0] === "build");
-      expect(builds).toHaveLength(2);
-    });
+    expect(fs.existsSync(path.join(APPDATA_DIR, "Dockerfile"))).toBe(true);
   });
 
-  describe("user target", () => {
-    it("builds only the user stage", () => {
-      seedDirs();
-      const runtime = new ContainerClient(mockExecutor, "docker");
-      const { settingsStore, stateStore } = makeStores();
-      enqueue({ status: 0 });
-      enqueue({ status: 0 });
-
-      const result = buildImage(
-        runtime,
-        settingsStore,
-        stateStore,
-        fsReader,
-        "user",
-      );
-      expect(result.ok).toBe(true);
-
-      const builds = calls.filter(c => c.args[0] === "build");
-      expect(builds).toHaveLength(1);
-    });
-  });
-
-  describe("failure handling", () => {
-    it("returns failure when core stage fails", () => {
-      seedDirs();
-      const runtime = new ContainerClient(mockExecutor, "docker");
-      const { settingsStore, stateStore } = makeStores();
-      enqueue({ status: 1 });
-
-      const result = buildImage(
-        runtime,
-        settingsStore,
-        stateStore,
-        fsReader,
-        "full",
-      );
-      expect(result.ok).toBe(false);
-      const builds = calls.filter(c => c.args[0] === "build");
-      expect(builds).toHaveLength(1);
-    });
-
-    it("returns failure when harness stage fails", () => {
-      seedDirs();
-      const runtime = new ContainerClient(mockExecutor, "docker");
-      const { settingsStore, stateStore } = makeStores();
-      enqueue({ status: 0 });
-      enqueue({ status: 1 });
-
-      const result = buildImage(
-        runtime,
-        settingsStore,
-        stateStore,
-        fsReader,
-        "full",
-      );
-      expect(result.ok).toBe(false);
-      const builds = calls.filter(c => c.args[0] === "build");
-      expect(builds).toHaveLength(2);
-    });
-  });
-
-  describe("buildDirty clearing", () => {
-    it("full build clears buildDirty", () => {
-      seedDirs();
-      const runtime = new ContainerClient(mockExecutor, "docker");
-      const { settingsStore, stateStore } = makeStores();
-      stateStore.save({ buildDirty: "tools" });
-      enqueue({ status: 0 });
-      enqueue({ status: 0 });
-      enqueue({ status: 0 });
-      enqueue({ status: 0 });
-      enqueue({ status: 0 });
-
-      buildImage(runtime, settingsStore, stateStore, fsReader, "full");
-
-      const state = stateStore.load();
-      expect(state.ok).toBe(true);
-      if (!state.ok) return;
-      expect(state.value.buildDirty).toBeUndefined();
-    });
-
-    it("harness build clears only harness dirty", () => {
-      seedDirs();
-      const runtime = new ContainerClient(mockExecutor, "docker");
-      const { settingsStore, stateStore } = makeStores();
-      stateStore.save({ buildDirty: "harness" });
-      enqueue({ status: 0 });
-      enqueue({ status: 0 });
-      enqueue({ status: 0 });
-
-      buildImage(runtime, settingsStore, stateStore, fsReader, "harness");
-
-      const state = stateStore.load();
-      expect(state.ok).toBe(true);
-      if (!state.ok) return;
-      expect(state.value.buildDirty).toBeUndefined();
-    });
-
-    it("harness build leaves tools dirty intact", () => {
-      seedDirs();
-      const runtime = new ContainerClient(mockExecutor, "docker");
-      const { settingsStore, stateStore } = makeStores();
-      stateStore.save({ buildDirty: "tools" });
-      enqueue({ status: 0 });
-      enqueue({ status: 0 });
-      enqueue({ status: 0 });
-
-      buildImage(runtime, settingsStore, stateStore, fsReader, "harness");
-
-      const state = stateStore.load();
-      expect(state.ok).toBe(true);
-      if (!state.ok) return;
-      expect(state.value.buildDirty).toBe("tools");
-    });
-  });
-});
-
-describe("generateDockerfileCore", () => {
-  it("generates all sections with defaults", () => {
-    const config = resolveCoreConfig({});
-    const result = generateDockerfileCore(config);
-    expect(result).toContain("FROM ubuntu:24.04");
-    expect(result).toContain("WORKDIR /root");
-    expect(result).toContain('CMD ["bin/bash"]'.replace("bin", "/bin"));
-    expect(result).toContain(DEFAULT_PROMPT_COMMAND);
-    expect(result).toContain(DEFAULT_CORE_COMMANDS);
-  });
-
-  it("omits default commands when disabled", () => {
-    const config = resolveCoreConfig({ disableDefaultCommands: true });
-    const result = generateDockerfileCore(config);
-    expect(result).toContain("FROM ubuntu:24.04");
-    expect(result).not.toContain("apt-get update");
-  });
-
-  it("includes custom commands", () => {
-    const config = resolveCoreConfig({
-      customCommands: ["RUN echo hello", "RUN echo world"],
-    });
-    const result = generateDockerfileCore(config);
-    expect(result).toContain("RUN echo hello\nRUN echo world");
-  });
-
-  it("uses custom base image", () => {
-    const config = resolveCoreConfig({ baseImage: "debian:12" });
-    const result = generateDockerfileCore(config);
-    expect(result).toContain("FROM debian:12");
-    expect(result).not.toContain("FROM ubuntu:24.04");
-  });
-
-  it("user config overrides defaults", () => {
-    const config = resolveCoreConfig({ workdir: "/app" });
-    expect(config.workdir).toBe("/app");
-    expect(config.baseImage).toBe("ubuntu:24.04");
-  });
-});
-
-describe("generateDockerfileHarness", () => {
-  it("generates FROM preamble with no harnesses", () => {
-    const result = generateDockerfileHarness([]);
-    expect(result).toBe(
-      "FROM localhost/aerovato/container-v3-tools\nLABEL aerovato.container=v3\n",
+  it("passes build args for enabled tools and harnesses", () => {
+    seedDirs();
+    fs.writeFileSync(
+      CONFIG_JSON_PATH,
+      JSON.stringify({ enabledTools: ["bun"], enabledHarnesses: ["claude"] }) + "\n",
     );
+    const runtime = new ContainerClient(mockExecutor, "docker");
+    const { settingsStore } = makeStores();
+    enqueue({ status: 0 });
+
+    buildImage(runtime, settingsStore, undefined, fsReader);
+
+    const buildCall = calls.find(c => c.args[0] === "build");
+    expect(buildCall).toBeDefined();
+    expect(buildCall!.args).toContain("--build-arg");
+    expect(buildCall!.args).toContain("INSTALL_BUN=true");
+    expect(buildCall!.args).toContain("INSTALL_CLAUDE=true");
   });
 
-  it("includes dockerfileLines for enabled harnesses", () => {
-    const result = generateDockerfileHarness(["claude"]);
-    expect(result).toContain("FROM localhost/aerovato/container-v3-tools");
-    expect(result).toContain("curl -fsSL https://claude.ai/install.sh");
+  it("returns failure on non-zero exit", () => {
+    seedDirs();
+    const runtime = new ContainerClient(mockExecutor, "docker");
+    const { settingsStore } = makeStores();
+    enqueue({ status: 1 });
+
+    const result = buildImage(runtime, settingsStore, undefined, fsReader);
+    expect(result.ok).toBe(false);
   });
 
-  it("includes dockerfileLines for multiple harnesses", () => {
-    const result = generateDockerfileHarness(["claude", "codex"]);
-    expect(result).toContain("curl -fsSL https://claude.ai/install.sh");
-    expect(result).toContain("npm install -g @openai/codex");
-  });
+  it("returns failure when Dockerfile is missing", () => {
+    fs.mkdirSync(APPDATA_DIR, { recursive: true });
+    fs.writeFileSync(CONFIG_JSON_PATH, "{}\n");
+    const runtime = new ContainerClient(mockExecutor, "docker");
+    const { settingsStore } = makeStores();
 
-  it("skips unknown harness ids", () => {
-    const result = generateDockerfileHarness(["nonexistent"]);
-    expect(result).toBe(
-      "FROM localhost/aerovato/container-v3-tools\nLABEL aerovato.container=v3\n",
-    );
+    const result = buildImage(runtime, settingsStore, undefined, fsReader);
+    expect(result.ok).toBe(false);
   });
 });
 
-describe("getMounts", () => {
+describe("buildMounts", () => {
   const home = os.homedir();
 
+  function defaultMountConfig() {
+    return {
+      auth_mode: "shared" as const,
+      history_mode: "shared" as const,
+      network: "bridge",
+      keep_alive: false,
+      project_readonly: false,
+      penv_path: "",
+      renv_path: "",
+      data_branches: [] as string[],
+      mount_home_children: false,
+      extra_readonly: [] as string[],
+      extra_readwrite: [] as string[],
+      extra_ld_library_path: [] as string[],
+      project_symlink_mounts: "off" as const,
+      project_symlink_depth: 3,
+      forward_ssh_agent: false,
+      ssh_known_hosts_path: "",
+    };
+  }
+
+  function seedConfig(enabledHarnesses: string[] = [], enabledTools: string[] = []) {
+    fs.mkdirSync(APPDATA_DIR, { recursive: true });
+    fs.mkdirSync(PROJECTS_DIR, { recursive: true });
+    const config: Record<string, unknown> = {};
+    if (enabledHarnesses.length > 0) config.enabledHarnesses = enabledHarnesses;
+    if (enabledTools.length > 0) config.enabledTools = enabledTools;
+    fs.writeFileSync(CONFIG_JSON_PATH, JSON.stringify(config) + "\n");
+  }
+
   it("mounts project path", () => {
-    const mounts = getMounts(fsReader, "/home/user/foo", "foo", {});
-    expect(mounts).toContain(
-      "type=bind,source=/home/user/foo,target=/root/foo",
-    );
+    seedConfig();
+    const mc = defaultMountConfig();
+    const { mounts } = buildMounts(fsReader, "/home/user/foo", "foo-abc12345", mc);
+    expect(mounts).toContain("/root/foo:/home/user/foo");
   });
 
-  it("mounts harness configs for enabled harnesses", () => {
-    const mounts = getMounts(fsReader, "/home/user/foo", "foo", {
-      enabledHarnesses: ["claude"],
-    });
-    const claudeConfig = mounts.find(
-      m => m.includes(".claude") && !m.includes(".json"),
-    );
-    expect(claudeConfig).toBeDefined();
-    expect(fs.statSync(path.join(CONFIGS_DIR, ".claude")).isDirectory()).toBe(
-      true,
-    );
+  it("mounts project read-only when configured", () => {
+    seedConfig();
+    const mc = defaultMountConfig();
+    mc.project_readonly = true;
+    const { mounts } = buildMounts(fsReader, "/home/user/foo", "foo-abc12345", mc);
+    expect(mounts).toContain("/root/foo:/home/user/foo:ro");
   });
 
-  it("creates missing file config sources in getMounts", () => {
-    getMounts(fsReader, "/home/user/foo", "foo", {
-      enabledHarnesses: ["claude"],
-    });
-
-    expect(
-      fs.readFileSync(path.join(CONFIGS_DIR, ".claude.json"), "utf-8"),
-    ).toBe("{}\n");
+  it("mounts extra_readonly paths", () => {
+    seedConfig();
+    const mc = defaultMountConfig();
+    mc.extra_readonly = ["/data/shared"];
+    fs.mkdirSync("/data/shared", { recursive: true });
+    const { mounts } = buildMounts(fsReader, "/home/user/foo", "foo-abc12345", mc);
+    expect(mounts).toContain("/data/shared:/data/shared:ro");
   });
 
-  it("does not mount Claude's install directory", () => {
-    const mounts = getMounts(fsReader, "/home/user/foo", "foo", {
-      enabledHarnesses: ["claude"],
-    });
-
-    expect(
-      mounts.find(m => m.includes("target=/root/.local/share/claude")),
-    ).toBeUndefined();
+  it("mounts extra_readwrite paths", () => {
+    seedConfig();
+    const mc = defaultMountConfig();
+    mc.extra_readwrite = ["/tmp/cache"];
+    fs.mkdirSync("/tmp/cache", { recursive: true });
+    const { mounts } = buildMounts(fsReader, "/home/user/foo", "foo-abc12345", mc);
+    expect(mounts).toContain("/tmp/cache:/tmp/cache");
   });
 
-  it("creates missing tool directory config sources", () => {
-    getMounts(fsReader, "/home/user/foo", "foo", {
-      enabledTools: ["npm-config"],
-    });
-
-    expect(fs.statSync(path.join(CONFIGS_DIR, ".npm")).isDirectory()).toBe(
-      true,
-    );
-    expect(fs.readFileSync(path.join(CONFIGS_DIR, ".npmrc"), "utf-8")).toBe("");
+  it("mounts ssh-agent-relay when forward_ssh_agent is true", () => {
+    seedConfig();
+    const mc = defaultMountConfig();
+    mc.forward_ssh_agent = true;
+    const relayDir = path.join(home, ".ssh-agent-relay");
+    fs.mkdirSync(relayDir, { recursive: true });
+    const { mounts } = buildMounts(fsReader, "/home/user/foo", "foo-abc12345", mc);
+    const sshMount = mounts.find(m => m.includes(".ssh-agent-relay"));
+    expect(sshMount).toBeDefined();
+    expect(sshMount).toContain(":ro");
   });
 
-  it("repairs wrong config source types", () => {
-    fs.mkdirSync(path.join(CONFIGS_DIR, ".claude.json"), { recursive: true });
-    fs.writeFileSync(path.join(CONFIGS_DIR, ".claude"), "not a directory");
-
-    getMounts(fsReader, "/home/user/foo", "foo", {
-      enabledHarnesses: ["claude"],
-    });
-
-    expect(fs.statSync(path.join(CONFIGS_DIR, ".claude.json")).isFile()).toBe(
-      true,
-    );
-    expect(fs.statSync(path.join(CONFIGS_DIR, ".claude")).isDirectory()).toBe(
-      true,
-    );
-  });
-
-  it("mounts ssh when enabled and present", () => {
-    fs.mkdirSync(path.join(home, ".ssh"), { recursive: true });
-    const mounts = getMounts(fsReader, "/home/user/foo", "foo", {
-      systemMounts: { ssh: true },
-    });
-    expect(mounts).toContain(
-      `type=bind,source=${home}/.ssh,target=/root/.ssh,readonly`,
-    );
-  });
-
-  it("skips ssh when enabled but missing", () => {
-    const mounts = getMounts(fsReader, "/home/user/foo", "foo", {
-      systemMounts: { ssh: true },
-    });
-    const sshMount = mounts.find(m => m.includes(".ssh"));
+  it("skips ssh-agent-relay when forward_ssh_agent is false", () => {
+    seedConfig();
+    const mc = defaultMountConfig();
+    mc.forward_ssh_agent = false;
+    fs.mkdirSync(path.join(home, ".ssh-agent-relay"), { recursive: true });
+    const { mounts } = buildMounts(fsReader, "/home/user/foo", "foo-abc12345", mc);
+    const sshMount = mounts.find(m => m.includes(".ssh-agent-relay"));
     expect(sshMount).toBeUndefined();
   });
 
-  it("skips ssh by default", () => {
-    const mounts = getMounts(fsReader, "/home/user/foo", "foo", {});
-    const sshMount = mounts.find(m => m.includes(".ssh"));
-    expect(sshMount).toBeUndefined();
+  it("mounts .gitconfig when present", () => {
+    seedConfig();
+    const mc = defaultMountConfig();
+    fs.writeFileSync(path.join(home, ".gitconfig"), "[user]\n");
+    const { mounts } = buildMounts(fsReader, "/home/user/foo", "foo-abc12345", mc);
+    const gitMount = mounts.find(m => m.includes(".gitconfig"));
+    expect(gitMount).toBeDefined();
+    expect(gitMount).toContain(":ro");
+  });
+
+  it("deduplicates mounts by container path", () => {
+    seedConfig();
+    const mc = defaultMountConfig();
+    mc.extra_readonly = ["/home/user/foo"];
+    fs.mkdirSync("/home/user/foo", { recursive: true });
+    const { mounts } = buildMounts(fsReader, "/home/user/foo", "foo-abc12345", mc);
+    const projectMounts = mounts.filter(m => m.includes("/root/foo"));
+    expect(projectMounts).toHaveLength(1);
+  });
+
+  it("mounts auth config from host when auth_mode=shared and host file exists", () => {
+    seedConfig(["claude"]);
+    const mc = defaultMountConfig();
+    mc.auth_mode = "shared";
+    fs.mkdirSync(path.join(home, ".claude"), { recursive: true });
+    fs.writeFileSync(path.join(home, ".claude.json"), "{}");
+    const { mounts } = buildMounts(fsReader, "/home/user/foo", "foo-abc12345", mc);
+    const authMount = mounts.find(m => m.includes(".claude.json"));
+    expect(authMount).toBeDefined();
+    expect(authMount).toContain(path.join(home, ".claude.json"));
+  });
+
+  it("mounts auth config from managed dir when auth_mode=per_project", () => {
+    seedConfig(["claude"]);
+    const mc = defaultMountConfig();
+    mc.auth_mode = "per_project";
+    const { mounts } = buildMounts(fsReader, "/home/user/foo", "foo-abc12345", mc);
+    const authMount = mounts.find(m => m.includes(".claude.json"));
+    expect(authMount).toBeDefined();
+    expect(authMount).toContain(CONFIGS_DIR);
+  });
+
+  it("mounts history config from host when history_mode=shared and host dir exists", () => {
+    seedConfig(["claude"]);
+    const mc = defaultMountConfig();
+    mc.history_mode = "shared";
+    fs.mkdirSync(path.join(home, ".local/state/claude"), { recursive: true });
+    const { mounts } = buildMounts(fsReader, "/home/user/foo", "foo-abc12345", mc);
+    const historyMount = mounts.find(m =>
+      m.includes(".local/state/claude") && !m.includes(CONFIGS_DIR),
+    );
+    expect(historyMount).toBeDefined();
+    expect(historyMount).toContain(path.join(home, ".local/state/claude"));
+  });
+
+  it("mounts history config from managed dir when history_mode=isolated", () => {
+    seedConfig(["claude"]);
+    const mc = defaultMountConfig();
+    mc.history_mode = "isolated";
+    const { mounts } = buildMounts(fsReader, "/home/user/foo", "foo-abc12345", mc);
+    const historyMount = mounts.find(m => m.includes(".local/state/claude"));
+    expect(historyMount).toBeDefined();
+    expect(historyMount).toContain(CONFIGS_DIR);
+  });
+
+  it("mounts settings config from managed dir regardless of auth_mode", () => {
+    seedConfig(["claude"]);
+    const mc = defaultMountConfig();
+    mc.auth_mode = "shared";
+    const { mounts } = buildMounts(fsReader, "/home/user/foo", "foo-abc12345", mc);
+    const settingsMount = mounts.find(m =>
+      m.includes("/root/.claude") && !m.includes(".claude.json")
+        && !m.includes("state"),
+    );
+    expect(settingsMount).toBeDefined();
+    expect(settingsMount).toContain(CONFIGS_DIR);
+  });
+
+  it("mounts container.bashrc when present", () => {
+    seedConfig();
+    const mc = defaultMountConfig();
+    fs.mkdirSync(APPDATA_DIR, { recursive: true });
+    fs.writeFileSync(CONTAINER_BASHRC_PATH, "# bashrc\n");
+    const { mounts } = buildMounts(fsReader, "/home/user/foo", "foo-abc12345", mc);
+    const bashrcMount = mounts.find(m => m.includes("container.bashrc"));
+    expect(bashrcMount).toBeDefined();
+    expect(bashrcMount).toBe(`${CONTAINER_BASHRC_PATH}:/etc/container.bashrc:ro`);
+  });
+
+  it("mounts home child directories as read-only when mount_home_children is true", () => {
+    seedConfig();
+    const mc = defaultMountConfig();
+    mc.mount_home_children = true;
+    const childDir = path.join(home, "testchild123");
+    fs.mkdirSync(childDir, { recursive: true });
+    const { mounts } = buildMounts(fsReader, "/home/user/foo", "foo-abc12345", mc);
+    const childMount = mounts.find(m => m === `${childDir}:${childDir}:ro`);
+    expect(childMount).toBeDefined();
+    fs.rmSync(childDir, { recursive: true, force: true });
+  });
+
+  it("mounts ssh known_hosts when forward_ssh_agent and path provided", () => {
+    seedConfig();
+    const mc = defaultMountConfig();
+    mc.forward_ssh_agent = true;
+    mc.ssh_known_hosts_path = "/home/user/.ssh/known_hosts";
+    fs.mkdirSync(path.join(home, ".ssh-agent-relay"), { recursive: true });
+    fs.mkdirSync("/home/user/.ssh", { recursive: true });
+    fs.writeFileSync("/home/user/.ssh/known_hosts", "");
+    const { mounts } = buildMounts(fsReader, "/home/user/foo", "foo-abc12345", mc);
+    const knownHostsMount = mounts.find(m => m.includes("known_hosts"));
+    expect(knownHostsMount).toBeDefined();
+    expect(knownHostsMount).toContain("/root/.ssh/known_hosts:ro");
   });
 });
 
@@ -684,12 +666,11 @@ describe("stopOrphanedContainers", () => {
   afterEach(() => {
     dateNowSpy.mockRestore();
   });
-  it("stops orphaned container past threshold with no sessions", () => {
+  it("stops orphaned container past threshold", () => {
     dateNowSpy.mockReturnValue(new Date("2026-06-11T14:10:00Z").getTime());
 
     enqueue({ status: 0, stdout: "container-myproject-abc12345\n" });
     enqueue({ status: 0, stdout: "2026-06-11T14:00:00Z\n" });
-    enqueue({ status: 0, stdout: "root 1 0 0 14:00 ? 00:00 sleep infinity\n" });
     enqueue({ status: 0 });
 
     stopOrphanedContainers(runtime);
@@ -704,22 +685,6 @@ describe("stopOrphanedContainers", () => {
 
     enqueue({ status: 0, stdout: "container-myproject-abc12345\n" });
     enqueue({ status: 0, stdout: "2026-06-11T14:00:00Z\n" });
-
-    stopOrphanedContainers(runtime);
-
-    const stopCall = calls.find(c => c.args[0] === "stop");
-    expect(stopCall).toBeUndefined();
-  });
-
-  it("skips container with active sessions", () => {
-    dateNowSpy.mockReturnValue(new Date("2026-06-11T14:10:00Z").getTime());
-
-    enqueue({ status: 0, stdout: "container-myproject-abc12345\n" });
-    enqueue({ status: 0, stdout: "2026-06-11T14:00:00Z\n" });
-    enqueue({
-      status: 0,
-      stdout: "root 222 1 0 14:01 pts/0 00:00 /bin/bash\n",
-    });
 
     stopOrphanedContainers(runtime);
 
@@ -747,41 +712,13 @@ describe("stopOrphanedContainers", () => {
       stdout: "container-foo-abc12345\ncontainer-bar-def67890\n",
     });
     enqueue({ status: 0, stdout: "2026-06-11T14:00:00Z\n" });
-    enqueue({ status: 0, stdout: "root 1 0 0 14:00 ? 00:00 sleep infinity\n" });
-    enqueue({ status: 0 });
     enqueue({ status: 0, stdout: "2026-06-11T14:00:00Z\n" });
-    enqueue({
-      status: 0,
-      stdout: "root 222 1 0 14:01 pts/0 00:00 /bin/bash\n",
-    });
+    enqueue({ status: 0 });
+    enqueue({ status: 0 });
 
     stopOrphanedContainers(runtime);
 
     const stopCalls = calls.filter(c => c.args[0] === "stop");
-    expect(stopCalls).toHaveLength(1);
-    expect(stopCalls[0]!.args).toContain("container-foo-abc12345");
-  });
-});
-
-describe("generateDockerfileTools", () => {
-  it("generates FROM preamble with no tools", () => {
-    const result = generateDockerfileTools([]);
-    expect(result).toBe(
-      "FROM localhost/aerovato/container-v3-core\nLABEL aerovato.container=v3\n",
-    );
-  });
-
-  it("includes dockerfileLines for enabled tools", () => {
-    const result = generateDockerfileTools(["bun", "deno"]);
-    expect(result).toContain("FROM localhost/aerovato/container-v3-core");
-    expect(result).toContain("curl -fsSL https://bun.sh/install | bash");
-    expect(result).toContain("curl -fsSL https://deno.land/install.sh | sh");
-  });
-
-  it("skips unknown tool ids", () => {
-    const result = generateDockerfileTools(["nonexistent"]);
-    expect(result).toBe(
-      "FROM localhost/aerovato/container-v3-core\nLABEL aerovato.container=v3\n",
-    );
+    expect(stopCalls).toHaveLength(2);
   });
 });

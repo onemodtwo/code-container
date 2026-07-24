@@ -1,5 +1,26 @@
 # Changelog
 
+## v3.6.0
+
+Additions:
+
+- `tool_permissions` config field with restrictive defaults: blocks network commands (`curl`, `wget`, `pip`, `npm`, `ssh`, etc.) inside containers for security hardening
+- `install.json` now includes all configurable fields: `penv_path`, `renv_path`, `extra_readonly`, `extra_readwrite`, `extra_ld_library_path`, `tool_permissions`
+- `penv_path` now supports relative paths, resolved against the project directory
+- Dockerfile creates `/home/user → /root` symlink so absolute symlinks referencing the host home directory continue to resolve inside the container
+- `buildMounts()` returns `{ mounts, containerProjectPath }` for callers needing the in-container project path
+
+Changes:
+
+- Package renamed from `@aerovato/container` to `@onemodtwo/code-container`
+- License changed from MIT to BSD-3-Clause
+- Project directory mounted at `/root/<projectName>` instead of `<hostPath>:<hostPath>` for cleaner in-container paths
+- `-w` flag uses the in-container project path (`/root/<projectName>`) so users land in their project directory
+- `PENV_PATH` env var only set when the resolved host path actually exists (`fs.existsSync` guard)
+- Removed dead `SETTINGS_PATH` export from `paths.ts`
+- Swept remaining Aerovato branding from source files and tests
+- README replaced with generalized multi-tool documentation
+
 ## v3.5.1
 
 Fixes:

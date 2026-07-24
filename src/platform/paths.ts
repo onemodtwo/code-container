@@ -1,3 +1,4 @@
+import fs from "fs";
 import path from "path";
 import os from "os";
 import crypto from "crypto";
@@ -7,17 +8,12 @@ export const APPDATA_DIR = path.join(os.homedir(), ".code-container");
 export const STANDALONE_INSTALL_DIR = path.join(APPDATA_DIR, "bin");
 export const CONFIGS_DIR = path.join(APPDATA_DIR, "configs");
 export const TEMP_DIR = path.join(APPDATA_DIR, "temp");
-export const ARCHIVE_DIR = path.join(APPDATA_DIR, "archive");
-export const SETTINGS_PATH = path.join(APPDATA_DIR, "settings.json");
 export const STATE_PATH = path.join(TEMP_DIR, "state.json");
 export const USER_DOCKERFILE_PATH = path.join(APPDATA_DIR, "Dockerfile.User");
-
-export const CORE_DOCKERFILE_PATH = path.join(TEMP_DIR, "Dockerfile.Core");
-export const TOOLS_DOCKERFILE_PATH = path.join(TEMP_DIR, "Dockerfile.Tools");
-export const HARNESS_DOCKERFILE_PATH = path.join(
-  TEMP_DIR,
-  "Dockerfile.Harness",
-);
+export const CONFIG_JSON_PATH = path.join(APPDATA_DIR, "config.json");
+export const PROJECTS_DIR = path.join(APPDATA_DIR, "projects");
+export const DOCKERFILE_PATH = path.join(APPDATA_DIR, "Dockerfile");
+export const CONTAINER_BASHRC_PATH = path.join(APPDATA_DIR, "container.bashrc");
 
 export function homeDir(): string {
   return os.homedir();
@@ -47,12 +43,19 @@ export const CONTAINER_PREFIX = "container";
 function canonicalizeProjectPath(projectPath: string): string {
   const trimmed = projectPath.replace(/[\\/]+$/, "");
   const driveMatch = trimmed.match(/^([A-Za-z]):[\\/](.*)$/);
+  let resolved: string;
   if (driveMatch) {
     const drive = driveMatch[1].toLowerCase();
     const rest = driveMatch[2].replace(/\\/g, "/");
-    return `/mnt/${drive}/${rest}`;
+    resolved = `/mnt/${drive}/${rest}`;
+  } else {
+    try {
+      resolved = fs.realpathSync(trimmed);
+    } catch {
+      resolved = path.resolve(trimmed);
+    }
   }
-  return trimmed;
+  return resolved;
 }
 
 export function generateContainerName(projectPath: string): string {

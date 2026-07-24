@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import path from "path";
 import { fs, vol } from "memfs";
-import { SETTINGS_PATH } from "../src/platform/paths";
+import { CONFIG_JSON_PATH } from "../src/platform/paths";
 import { SettingsStore } from "../src/config";
 import { FsReader, Filesystem } from "../src/platform/fs";
 import { ensureTosAccepted, LATEST_TOS_VERSION } from "../src/tos";
@@ -25,12 +25,12 @@ beforeEach(() => {
 
 describe("ensureTosAccepted", () => {
   it("returns true when tosVersion matches latest", async () => {
-    fs.mkdirSync(path.dirname(SETTINGS_PATH), { recursive: true });
+    fs.mkdirSync(path.dirname(CONFIG_JSON_PATH), { recursive: true });
     fs.writeFileSync(
-      SETTINGS_PATH,
+      CONFIG_JSON_PATH,
       JSON.stringify({ tosVersion: LATEST_TOS_VERSION }),
     );
-    const store = new SettingsStore(fsReader, SETTINGS_PATH);
+    const store = new SettingsStore(fsReader, CONFIG_JSON_PATH);
 
     const result = await ensureTosAccepted(store);
     expect(result).toBe(true);
@@ -38,9 +38,9 @@ describe("ensureTosAccepted", () => {
   });
 
   it("shows TOS and saves when user accepts", async () => {
-    fs.mkdirSync(path.dirname(SETTINGS_PATH), { recursive: true });
-    fs.writeFileSync(SETTINGS_PATH, JSON.stringify({}));
-    const store = new SettingsStore(fsReader, SETTINGS_PATH);
+    fs.mkdirSync(path.dirname(CONFIG_JSON_PATH), { recursive: true });
+    fs.writeFileSync(CONFIG_JSON_PATH, JSON.stringify({}));
+    const store = new SettingsStore(fsReader, CONFIG_JSON_PATH);
 
     vi.mocked(clack.confirm).mockResolvedValueOnce(true as unknown as symbol);
 
@@ -51,14 +51,14 @@ describe("ensureTosAccepted", () => {
       expect.objectContaining({ message: "Do you accept these terms?" }),
     );
 
-    const saved = JSON.parse(fs.readFileSync(SETTINGS_PATH, "utf-8") as string);
+    const saved = JSON.parse(fs.readFileSync(CONFIG_JSON_PATH, "utf-8") as string);
     expect(saved.tosVersion).toBe(LATEST_TOS_VERSION);
   });
 
   it("returns false when user declines", async () => {
-    fs.mkdirSync(path.dirname(SETTINGS_PATH), { recursive: true });
-    fs.writeFileSync(SETTINGS_PATH, JSON.stringify({}));
-    const store = new SettingsStore(fsReader, SETTINGS_PATH);
+    fs.mkdirSync(path.dirname(CONFIG_JSON_PATH), { recursive: true });
+    fs.writeFileSync(CONFIG_JSON_PATH, JSON.stringify({}));
+    const store = new SettingsStore(fsReader, CONFIG_JSON_PATH);
 
     vi.mocked(clack.confirm).mockResolvedValueOnce(false as unknown as symbol);
 
@@ -68,9 +68,9 @@ describe("ensureTosAccepted", () => {
   });
 
   it("returns false when user cancels", async () => {
-    fs.mkdirSync(path.dirname(SETTINGS_PATH), { recursive: true });
-    fs.writeFileSync(SETTINGS_PATH, JSON.stringify({}));
-    const store = new SettingsStore(fsReader, SETTINGS_PATH);
+    fs.mkdirSync(path.dirname(CONFIG_JSON_PATH), { recursive: true });
+    fs.writeFileSync(CONFIG_JSON_PATH, JSON.stringify({}));
+    const store = new SettingsStore(fsReader, CONFIG_JSON_PATH);
 
     vi.mocked(clack.isCancel).mockReturnValueOnce(true);
     vi.mocked(clack.confirm).mockResolvedValueOnce(Symbol("cancel"));
@@ -81,9 +81,9 @@ describe("ensureTosAccepted", () => {
   });
 
   it("returns false when settings load fails", async () => {
-    fs.mkdirSync(path.dirname(SETTINGS_PATH), { recursive: true });
-    fs.writeFileSync(SETTINGS_PATH, "not json");
-    const store = new SettingsStore(fsReader, SETTINGS_PATH);
+    fs.mkdirSync(path.dirname(CONFIG_JSON_PATH), { recursive: true });
+    fs.writeFileSync(CONFIG_JSON_PATH, "not json");
+    const store = new SettingsStore(fsReader, CONFIG_JSON_PATH);
 
     const result = await ensureTosAccepted(store);
     expect(result).toBe(false);
@@ -91,15 +91,15 @@ describe("ensureTosAccepted", () => {
   });
 
   it("does not save tosVersion on decline", async () => {
-    fs.mkdirSync(path.dirname(SETTINGS_PATH), { recursive: true });
-    fs.writeFileSync(SETTINGS_PATH, JSON.stringify({}));
-    const store = new SettingsStore(fsReader, SETTINGS_PATH);
+    fs.mkdirSync(path.dirname(CONFIG_JSON_PATH), { recursive: true });
+    fs.writeFileSync(CONFIG_JSON_PATH, JSON.stringify({}));
+    const store = new SettingsStore(fsReader, CONFIG_JSON_PATH);
 
     vi.mocked(clack.confirm).mockResolvedValueOnce(false as unknown as symbol);
 
     await ensureTosAccepted(store);
 
-    const saved = JSON.parse(fs.readFileSync(SETTINGS_PATH, "utf-8") as string);
+    const saved = JSON.parse(fs.readFileSync(CONFIG_JSON_PATH, "utf-8") as string);
     expect(saved.tosVersion).toBeUndefined();
   });
 });

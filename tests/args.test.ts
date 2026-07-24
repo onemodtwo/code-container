@@ -51,36 +51,14 @@ describe("parseArgs", () => {
   });
 
   describe("build", () => {
-    it("defaults to full target", () => {
+    it("parses build with no args", () => {
       expect(parseArgs(["build"])).toEqual({
         command: "build",
-        target: "full",
       });
     });
 
-    it("parses explicit full target", () => {
-      expect(parseArgs(["build", "full"])).toEqual({
-        command: "build",
-        target: "full",
-      });
-    });
-
-    it("parses harness target", () => {
-      expect(parseArgs(["build", "harness"])).toEqual({
-        command: "build",
-        target: "harness",
-      });
-    });
-
-    it("parses user target", () => {
-      expect(parseArgs(["build", "user"])).toEqual({
-        command: "build",
-        target: "user",
-      });
-    });
-
-    it("rejects invalid target", () => {
-      expect(() => parseArgs(["build", "invalid"])).toThrow("process.exit");
+    it("rejects extra args", () => {
+      expect(() => parseArgs(["build", "extra"])).toThrow("process.exit");
       expect(exitSpy).toHaveBeenCalledWith(1);
     });
   });

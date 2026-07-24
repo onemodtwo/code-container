@@ -7,9 +7,9 @@ import { StateStore } from "../config";
 import { fetchLatestVersion, isNewerVersion } from "../update-check";
 import pkg from "../../package.json";
 
-const REPO_URL = "https://github.com/aerovato/container";
-const INSTALL_SH_URL = "https://container.aerovato.com/install.sh";
-const INSTALL_PS1_URL = "https://container.aerovato.com/install.ps1";
+const REPO_URL = "https://github.com/onemodtwo/code-container";
+const INSTALL_SH_URL = "https://raw.githubusercontent.com/onemodtwo/code-container/main/install.sh";
+const INSTALL_PS1_URL = "https://raw.githubusercontent.com/onemodtwo/code-container/main/install.ps1";
 
 type InstallSource = "standalone" | "npm" | "unknown";
 
@@ -34,7 +34,7 @@ export function detectInstallSource(
   const normalizedScript = normalize(scriptPath || "");
   const scriptName = path.basename(normalizedScript).toLowerCase();
   const packageSegment = normalize(
-    path.join("node_modules", "@aerovato", "container"),
+    path.join("node_modules", "@onemodtwo", "code-container"),
   );
   if (
     (execName === "node" || execName === "node.exe")
@@ -98,7 +98,7 @@ function upgradeNpm(executor: Executor): void {
   const npm = isWindows() ? "npm.cmd" : "npm";
   const result = executor.spawnSync(
     npm,
-    ["install", "-g", "@aerovato/container@latest"],
+    ["install", "-g", "@onemodtwo/code-container@latest"],
     {
       stdio: "inherit",
     },

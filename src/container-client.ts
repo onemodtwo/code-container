@@ -7,6 +7,10 @@ export class ContainerClient {
     private bin: RuntimeBin,
   ) {}
 
+  getRuntimeBin(): RuntimeBin {
+    return this.bin;
+  }
+
   imageExists(name: string): boolean {
     const result = this.executor.spawnSync(
       this.bin,
@@ -34,10 +38,10 @@ export class ContainerClient {
     return result.status === 0 && result.stdout.toString().trim() === "true";
   }
 
-  build(dockerfilePath: string, tag: string, context: string): Result<void> {
+  build(dockerfilePath: string, tag: string, context: string, extraArgs: string[] = []): Result<void> {
     const result = this.executor.spawnSync(
       this.bin,
-      ["build", "--no-cache", "-t", tag, "-f", dockerfilePath, context],
+      ["build", "--no-cache", "-t", tag, "-f", dockerfilePath, ...extraArgs, context],
       { stdio: "inherit" },
     );
     if (result.status !== 0) {
@@ -138,17 +142,5 @@ export class ContainerClient {
       stdio: "pipe",
     });
     return result.status === 0;
-  }
-
-  attachedSessionCount(name: string): number {
-    const result = this.executor.spawnSync(this.bin, ["top", name], {
-      stdio: "pipe",
-    });
-    if (result.status !== 0) return 0;
-    let count = 0;
-    for (const line of result.stdout.toString().split("\n")) {
-      if (line.includes("bash")) count++;
-    }
-    return count;
   }
 }

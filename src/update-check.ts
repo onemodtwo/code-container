@@ -2,7 +2,7 @@ import { StateStore } from "./config";
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 const LATEST_RELEASE_URL =
-  "https://api.github.com/repos/aerovato/container/releases/latest";
+  "https://api.github.com/repos/onemodtwo/code-container/releases/latest";
 
 export async function maybeCheckForUpdate(
   stateStore: StateStore,

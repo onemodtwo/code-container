@@ -105,7 +105,12 @@ export async function expressSetup(
   );
 
   spinner.start("Migrating harness configs");
-  const migratedCount = migrateHarnessConfigs(fs, harnessIds);
+  const migratedCount = migrateHarnessConfigs(
+    fs,
+    harnessIds,
+    settings.auth_mode,
+    settings.history_mode,
+  );
   spinner.stop(`Migrated ${migratedCount} config items`);
 
   spinner.start("Detecting installed tooling");
@@ -137,7 +142,7 @@ export async function expressSetup(
     runtime,
     systemMounts: { ssh: true },
   };
-  const finalState: StateData = { buildDirty: "harness" };
+  const finalState: StateData = {};
 
   settingsStore.save(finalSettings);
   stateStore.save(finalState);
@@ -152,7 +157,7 @@ export async function expressSetup(
     } else {
       const rt = new ContainerClient(executor, runtime);
       clack.log.info(`Building container image (target: full)`);
-      const buildResult = buildImage(rt, settingsStore, stateStore, fs, "full");
+      const buildResult = buildImage(rt, settingsStore, undefined, fs);
       if (!buildResult.ok) {
         clack.log.error("Failed to build image");
         clack.log.warn("Run 'container build' manually to retry.");
@@ -197,7 +202,7 @@ async function customSetup(
     runtime,
     systemMounts: { ssh: sshMount },
   };
-  const finalState: StateData = { buildDirty: "harness" };
+  const finalState: StateData = {};
 
   settingsStore.save(finalSettings);
   stateStore.save(finalState);
@@ -215,13 +220,12 @@ async function customSetup(
         clack.log.error(`Unable to start ${runtime}. Image not built.`);
       } else {
         const rt = new ContainerClient(executor, runtime);
-        clack.log.info(`Building container image (target: full)`);
+        clack.log.info("Building container image");
         const buildResult = buildImage(
           rt,
           settingsStore,
-          stateStore,
+          undefined,
           fs,
-          "full",
         );
         if (!buildResult.ok) {
           clack.log.error("Failed to build image");
@@ -507,7 +511,12 @@ export function detectTools(executor: Executor): string[] {
   return detected;
 }
 
-function migrateHarnessConfigs(fs: Filesystem, harnessIds: string[]): number {
+function migrateHarnessConfigs(
+  fs: Filesystem,
+  harnessIds: string[],
+  authMode: "shared" | "per_project" = "shared",
+  historyMode: "shared" | "isolated" = "shared",
+): number {
   let count = 0;
 
   for (const id of harnessIds) {
@@ -515,6 +524,14 @@ function migrateHarnessConfigs(fs: Filesystem, harnessIds: string[]): number {
     if (!pack) continue;
 
     for (const c of pack.config) {
+      const configRole = "role" in c ? c.role : undefined;
+      if (configRole === "auth" && authMode === "shared") {
+        continue;
+      }
+      if (configRole === "history" && historyMode === "shared") {
+        continue;
+      }
+
       const sourcePath = expandHomePath(c.host);
       const destPath = path.join(CONFIGS_DIR, c.config);
 

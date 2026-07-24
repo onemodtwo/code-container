@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import path from "path";
 import os from "os";
 import { fs, vol } from "memfs";
-import { CONFIGS_DIR, SETTINGS_PATH, STATE_PATH } from "../src/platform/paths";
+import { CONFIGS_DIR, STATE_PATH, CONFIG_JSON_PATH, APPDATA_DIR } from "../src/platform/paths";
 import { FsReader, Filesystem } from "../src/platform/fs";
 import { SettingsStore, StateStore } from "../src/config";
 import { Platform } from "../src/platform/os";
@@ -322,10 +322,13 @@ describe("expressSetup", () => {
     settingsStore: SettingsStore;
     stateStore: StateStore;
   } {
-    fs.mkdirSync(path.dirname(SETTINGS_PATH), { recursive: true });
+    fs.mkdirSync(path.dirname(CONFIG_JSON_PATH), { recursive: true });
     fs.mkdirSync(path.dirname(STATE_PATH), { recursive: true });
+    fs.mkdirSync(APPDATA_DIR, { recursive: true });
+    fs.writeFileSync(CONFIG_JSON_PATH, "{}\n");
+    fs.writeFileSync(path.join(APPDATA_DIR, "Dockerfile"), "FROM ubuntu:24.04\n");
     return {
-      settingsStore: new SettingsStore(fsReader, SETTINGS_PATH),
+      settingsStore: new SettingsStore(fsReader, CONFIG_JSON_PATH),
       stateStore: new StateStore(fsReader, STATE_PATH),
     };
   }
@@ -350,7 +353,6 @@ describe("expressSetup", () => {
       "claude",
     ]);
     expect(result.settings.runtime).toBeUndefined();
-    expect(result.state.buildDirty).toBe("harness");
   });
 
   it("uses detected harnesses instead of defaults", async () => {
