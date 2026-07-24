@@ -373,6 +373,9 @@ export function buildMounts(
       if (configRole === "settings") {
         ensureConfigExists(fsInstance, c);
         sourcePath = path.join(projectConfigsDir, c.config);
+        if (!fs.existsSync(sourcePath)) {
+          fs.mkdirSync(sourcePath, { recursive: true });
+        }
       } else if (configRole === "auth" && mountConfig.auth_mode === "shared") {
         sourcePath = expandHomePath(c.host);
         if (!fs.existsSync(sourcePath)) {
