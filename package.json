@@ -16,7 +16,8 @@
   ],
   "scripts": {
     "postinstall": "node scripts/postinstall.js",
-    "build": "npm run build:js && npm run build:binary",
+    "build": "npm run build:js",
+    "build:release": "npm run build:js && npm run build:binary",
     "build:js": "sh scripts/build-js.sh",
     "build:binary": "sh scripts/build-binary.sh",
     "package:release": "sh scripts/package-release.sh",
