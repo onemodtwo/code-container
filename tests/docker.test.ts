@@ -197,7 +197,7 @@ describe("createNewContainer", () => {
     expect(runCall.args).toContain("COLORTERM=truecolor");
     expect(runCall.args).toContain("-w");
     expect(runCall.args).toContain("/root/foo");
-    expect(runCall.args).toContain("--mount");
+    expect(runCall.args).toContain("--volume");
     expect(runCall.args).toContain("/root/foo:/home/user/foo");
   });
 

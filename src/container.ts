@@ -482,7 +482,7 @@ export function createNewContainer(
   }
 
   for (const mount of mounts) {
-    args.push("--mount", mount);
+    args.push("--volume", mount);
   }
 
   args.push(...cliFlags);
