@@ -62,6 +62,12 @@ const ProjectOverrideSchema = z.object({
   project_symlink_depth: z.number().int().min(1).optional(),
   forward_ssh_agent: z.boolean().optional(),
   ssh_known_hosts_path: z.string().optional(),
+  tool_permissions: z
+    .object({
+      allow: z.array(z.string()).optional(),
+      deny: z.array(z.string()).optional(),
+    })
+    .optional(),
 });
 
 export type GlobalConfig = z.infer<typeof GlobalMountConfigSchema>;
@@ -83,6 +89,7 @@ export type MountConfig = {
   project_symlink_depth: number;
   forward_ssh_agent: boolean;
   ssh_known_hosts_path: string;
+  tool_permissions: { allow: string[]; deny: string[] };
 };
 
 function parseFile<T extends z.ZodTypeAny>(
@@ -156,6 +163,10 @@ export function loadMountConfig(projectDirName: string): MountConfig {
     forward_ssh_agent: override.forward_ssh_agent ?? global.forward_ssh_agent,
     ssh_known_hosts_path:
       override.ssh_known_hosts_path ?? global.ssh_known_hosts_path,
+    tool_permissions: {
+      allow: override.tool_permissions?.allow ?? global.tool_permissions.allow,
+      deny: override.tool_permissions?.deny ?? global.tool_permissions.deny,
+    },
   };
 }
 

@@ -434,6 +434,7 @@ describe("buildMounts", () => {
       project_symlink_depth: 3,
       forward_ssh_agent: false,
       ssh_known_hosts_path: "",
+      tool_permissions: { allow: ["*"] as string[], deny: [] as string[] },
     };
   }
 

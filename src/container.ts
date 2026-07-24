@@ -15,6 +15,7 @@ import { TOOL_PACKS } from "./tool-packs";
 import { CONTAINER_IMAGE } from "./docker";
 import { configMountSourcePath, ensureConfigExists } from "./config";
 import { loadMountConfig, loadGlobalConfig, MountConfig } from "./mount-config";
+import { mergePermissionsIntoConfig } from "./tool-permissions";
 import { countActiveSessions } from "./session";
 
 const TOOLCHAIN_HIDDEN_PATHS = [
@@ -393,6 +394,7 @@ export function buildMounts(
         addMount(`${sourcePath}:${c.mount}`);
       }
     }
+    mergePermissionsIntoConfig(fsInstance, id, mountConfig.tool_permissions);
   }
 
   const enabledToolIds = loadGlobalConfigEnabledTools();
