@@ -54,8 +54,8 @@ RUN if [ "$INSTALL_PYTHON" = "true" ]; then \
     fi
 
 RUN if [ "$INSTALL_BUN" = "true" ]; then \
-      curl -fsSL https://bun.sh/install | bash \
-      && echo 'export PATH="$HOME/.bun/bin:$PATH"' >> ~/.bashrc; \
+      BUN_INSTALL="$HOME/.bun" curl -fsSL https://bun.sh/install | bash; \
+      echo 'export PATH="$HOME/.bun/bin:$PATH"' >> ~/.bashrc; \
     fi
 
 RUN if [ "$INSTALL_ENHANCED_TOOLS" = "true" ]; then \
@@ -79,8 +79,8 @@ RUN if [ "$INSTALL_GO" = "true" ]; then \
     fi
 
 RUN if [ "$INSTALL_UV" = "true" ]; then \
-      curl -LsSf https://astral.sh/uv/install.sh | sh \
-      && echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc; \
+      INSTALLER_NO_MODIFY_PROFILE=1 curl -LsSf https://astral.sh/uv/install.sh | sh; \
+      echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc; \
     fi
 
 RUN if [ "$INSTALL_GH" = "true" ]; then \
