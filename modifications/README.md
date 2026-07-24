@@ -94,7 +94,7 @@ If not (no sudo access), install to your user-local prefix:
 npm install -g . --prefix ~/.local
 ```
 
-> **Note:** `npm install` only needs to be run once (or when `package.json` changes). `npm run build` must be run before every install or reinstall — the compiled `dist/` directory is not committed to the repo.
+> **Note:** `npm install` only needs to be run once (or when `package.json` changes). `npm run build` must be run before every install or reinstall — the compiled `dist/container` binary is not committed to the repo.
 
 For the local install, `~/.local/bin` must be on your `PATH`. Add to `~/.bashrc` if needed:
 
