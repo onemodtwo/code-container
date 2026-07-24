@@ -51,7 +51,9 @@ describe("ensureTosAccepted", () => {
       expect.objectContaining({ message: "Do you accept these terms?" }),
     );
 
-    const saved = JSON.parse(fs.readFileSync(CONFIG_JSON_PATH, "utf-8") as string);
+    const saved = JSON.parse(
+      fs.readFileSync(CONFIG_JSON_PATH, "utf-8") as string,
+    );
     expect(saved.tosVersion).toBe(LATEST_TOS_VERSION);
   });
 
@@ -99,7 +101,9 @@ describe("ensureTosAccepted", () => {
 
     await ensureTosAccepted(store);
 
-    const saved = JSON.parse(fs.readFileSync(CONFIG_JSON_PATH, "utf-8") as string);
+    const saved = JSON.parse(
+      fs.readFileSync(CONFIG_JSON_PATH, "utf-8") as string,
+    );
     expect(saved.tosVersion).toBeUndefined();
   });
 });

@@ -1,8 +1,6 @@
 import path from "path";
-import os from "os";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { fs, vol } from "memfs";
-import { FsReader, Filesystem } from "../src/platform/fs";
 import {
   APPDATA_DIR,
   CONFIG_JSON_PATH,
@@ -18,8 +16,6 @@ import {
 } from "../src/mount-config";
 
 vi.mock("fs");
-
-const fsReader = new Filesystem(fs as unknown as FsReader);
 
 beforeEach(() => {
   vol.reset();

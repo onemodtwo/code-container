@@ -186,7 +186,9 @@ describe("buildBindMount", () => {
 
 describe("generateContainerName with symlinks", () => {
   it("resolves symlinks so a path and its symlink produce the same container name", () => {
-    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "code-container-test-"));
+    const tmpDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "code-container-test-"),
+    );
     const realDir = path.join(tmpDir, "real-project");
     const symlinkPath = path.join(tmpDir, "link-project");
     fs.mkdirSync(realDir, { recursive: true });
@@ -201,7 +203,9 @@ describe("generateContainerName with symlinks", () => {
   });
 
   it("resolves nested symlinks", () => {
-    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "code-container-test-"));
+    const tmpDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "code-container-test-"),
+    );
     const realDir = path.join(tmpDir, "actual");
     const link1 = path.join(tmpDir, "link1");
     const link2 = path.join(tmpDir, "link2");

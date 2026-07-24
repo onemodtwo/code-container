@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports -- fs used for config file operations (read/write/exists)
 import fs from "fs";
 import path from "path";
 import crypto from "crypto";
@@ -42,9 +43,7 @@ export const GlobalMountConfigSchema = z.object({
   migrationVersion: z.number().optional(),
   onboardingVersion: z.number().optional(),
   tosVersion: z.number().optional(),
-  systemMounts: z
-    .object({ ssh: z.boolean().optional() })
-    .optional(),
+  systemMounts: z.object({ ssh: z.boolean().optional() }).optional(),
 });
 
 const ProjectOverrideSchema = z.object({
@@ -154,8 +153,7 @@ export function loadMountConfig(projectDirName: string): MountConfig {
       override.project_symlink_mounts ?? global.project_symlink_mounts,
     project_symlink_depth:
       override.project_symlink_depth ?? global.project_symlink_depth,
-    forward_ssh_agent:
-      override.forward_ssh_agent ?? global.forward_ssh_agent,
+    forward_ssh_agent: override.forward_ssh_agent ?? global.forward_ssh_agent,
     ssh_known_hosts_path:
       override.ssh_known_hosts_path ?? global.ssh_known_hosts_path,
   };

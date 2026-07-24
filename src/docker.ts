@@ -2,13 +2,11 @@ import * as clack from "@clack/prompts";
 import { ContainerClient } from "./container-client";
 import { SettingsStore } from "./config";
 import { Filesystem } from "./platform/fs";
-import {
-  APPDATA_DIR,
-  DOCKERFILE_PATH,
-} from "./platform/paths";
+import { APPDATA_DIR, DOCKERFILE_PATH } from "./platform/paths";
 import { loadGlobalConfig } from "./mount-config";
 import { Result } from "./types";
 import path from "path";
+// eslint-disable-next-line no-restricted-imports -- fs used for Dockerfile readFileSync (not in Filesystem abstraction)
 import fs from "fs";
 
 const IMAGE_TAG = "latest";

@@ -38,10 +38,24 @@ export class ContainerClient {
     return result.status === 0 && result.stdout.toString().trim() === "true";
   }
 
-  build(dockerfilePath: string, tag: string, context: string, extraArgs: string[] = []): Result<void> {
+  build(
+    dockerfilePath: string,
+    tag: string,
+    context: string,
+    extraArgs: string[] = [],
+  ): Result<void> {
     const result = this.executor.spawnSync(
       this.bin,
-      ["build", "--no-cache", "-t", tag, "-f", dockerfilePath, ...extraArgs, context],
+      [
+        "build",
+        "--no-cache",
+        "-t",
+        tag,
+        "-f",
+        dockerfilePath,
+        ...extraArgs,
+        context,
+      ],
       { stdio: "inherit" },
     );
     if (result.status !== 0) {

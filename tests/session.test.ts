@@ -21,9 +21,7 @@ describe("trackSessionStart", () => {
   it("creates session dir and writes PID file", () => {
     const sessionDir = "/projects/foo/sessions";
     const sessionFile = trackSessionStart(sessionDir);
-    expect(sessionFile).toBe(
-      path.join(sessionDir, `session-${process.pid}`),
-    );
+    expect(sessionFile).toBe(path.join(sessionDir, `session-${process.pid}`));
     expect(mockFs.existsSync(sessionFile)).toBe(true);
     const content = mockFs.readFileSync(sessionFile, "utf-8");
     expect(String(process.pid)).toBe(String(Number(content)));
@@ -75,22 +73,14 @@ describe("countActiveSessions", () => {
     mockFs.mkdirSync(sessionDir, { recursive: true });
 
     // Write three session files: two live, one stale
-    mockFs.writeFileSync(
-      path.join(sessionDir, "session-100"),
-      "100",
-    );
-    mockFs.writeFileSync(
-      path.join(sessionDir, "session-200"),
-      "200",
-    );
-    mockFs.writeFileSync(
-      path.join(sessionDir, "session-99999999"),
-      "99999999",
-    );
+    mockFs.writeFileSync(path.join(sessionDir, "session-100"), "100");
+    mockFs.writeFileSync(path.join(sessionDir, "session-200"), "200");
+    mockFs.writeFileSync(path.join(sessionDir, "session-99999999"), "99999999");
 
     // Mock process.kill: 100 and 200 are "alive", others throw
     vi.spyOn(process, "kill").mockImplementation(
-      (pid: number, signal?: string | number) => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars -- signal param required by process.kill signature
+      (pid: number, _signal?: string | number) => {
         if (pid === 100 || pid === 200) return true;
         throw new Error("ESRCH");
       },
@@ -100,9 +90,9 @@ describe("countActiveSessions", () => {
     expect(count).toBe(2);
 
     // The stale file should have been cleaned up
-    expect(mockFs.existsSync(
-      path.join(sessionDir, "session-99999999"),
-    )).toBe(false);
+    expect(mockFs.existsSync(path.join(sessionDir, "session-99999999"))).toBe(
+      false,
+    );
   });
 
   it("ignores non-session files", () => {
@@ -129,9 +119,7 @@ describe("countActiveSessions", () => {
 describe("getSessionDir", () => {
   it("returns PROJECTS_DIR/projectDirName/sessions", () => {
     const result = getSessionDir("foo-abc12345");
-    expect(result).toBe(
-      path.join(PROJECTS_DIR, "foo-abc12345", "sessions"),
-    );
+    expect(result).toBe(path.join(PROJECTS_DIR, "foo-abc12345", "sessions"));
   });
 
   it("ignores absolute input and uses PROJECTS_DIR prefix", () => {

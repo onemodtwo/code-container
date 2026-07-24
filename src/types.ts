@@ -3,9 +3,9 @@ import type { Executor } from "./platform/shell";
 import type { GlobalConfig } from "./mount-config";
 
 export type Result<T, E = string> =
-  | { ok: true; value: T }
-  | { ok: false; error: E };
+  { ok: true; value: T } | { ok: false; error: E };
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- used for type inference only
 const RuntimeBinSchema = z.enum(["docker", "podman"]);
 export type RuntimeBin = z.infer<typeof RuntimeBinSchema>;
 

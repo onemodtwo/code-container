@@ -20,7 +20,6 @@ import {
   buildMounts,
   stopOrphanedContainers,
 } from "../src/container";
-import { MountConfig } from "../src/mount-config";
 
 vi.mock("fs");
 
@@ -287,7 +286,10 @@ describe("createNewContainer", () => {
     seedConfig();
     fs.writeFileSync(
       CONFIG_JSON_PATH,
-      JSON.stringify({ penv_path: "/home/user/.venvs/myenv", renv_path: "/home/user/.renv" }) + "\n",
+      JSON.stringify({
+        penv_path: "/home/user/.venvs/myenv",
+        renv_path: "/home/user/.renv",
+      }) + "\n",
     );
     fs.mkdirSync("/home/user/.venvs/myenv", { recursive: true });
     fs.mkdirSync("/home/user/foo", { recursive: true });
@@ -335,14 +337,14 @@ describe("buildImage", () => {
     fs.mkdirSync(APPDATA_DIR, { recursive: true });
     fs.mkdirSync(CONFIGS_DIR, { recursive: true });
     fs.writeFileSync(CONFIG_JSON_PATH, "{}\n");
-    fs.writeFileSync(path.join(APPDATA_DIR, "Dockerfile"), "FROM ubuntu:24.04\n");
+    fs.writeFileSync(
+      path.join(APPDATA_DIR, "Dockerfile"),
+      "FROM ubuntu:24.04\n",
+    );
   }
 
   function makeStores() {
-    const settingsStore = new SettingsStore(
-      fsReader,
-      CONFIG_JSON_PATH,
-    );
+    const settingsStore = new SettingsStore(fsReader, CONFIG_JSON_PATH);
     return { settingsStore };
   }
 
@@ -374,7 +376,8 @@ describe("buildImage", () => {
     seedDirs();
     fs.writeFileSync(
       CONFIG_JSON_PATH,
-      JSON.stringify({ enabledTools: ["bun"], enabledHarnesses: ["claude"] }) + "\n",
+      JSON.stringify({ enabledTools: ["bun"], enabledHarnesses: ["claude"] })
+        + "\n",
     );
     const runtime = new ContainerClient(mockExecutor, "docker");
     const { settingsStore } = makeStores();
@@ -434,7 +437,10 @@ describe("buildMounts", () => {
     };
   }
 
-  function seedConfig(enabledHarnesses: string[] = [], enabledTools: string[] = []) {
+  function seedConfig(
+    enabledHarnesses: string[] = [],
+    enabledTools: string[] = [],
+  ) {
     fs.mkdirSync(APPDATA_DIR, { recursive: true });
     fs.mkdirSync(PROJECTS_DIR, { recursive: true });
     const config: Record<string, unknown> = {};
@@ -446,7 +452,12 @@ describe("buildMounts", () => {
   it("mounts project path", () => {
     seedConfig();
     const mc = defaultMountConfig();
-    const { mounts } = buildMounts(fsReader, "/home/user/foo", "foo-abc12345", mc);
+    const { mounts } = buildMounts(
+      fsReader,
+      "/home/user/foo",
+      "foo-abc12345",
+      mc,
+    );
     expect(mounts).toContain("/root/foo:/home/user/foo");
   });
 
@@ -454,7 +465,12 @@ describe("buildMounts", () => {
     seedConfig();
     const mc = defaultMountConfig();
     mc.project_readonly = true;
-    const { mounts } = buildMounts(fsReader, "/home/user/foo", "foo-abc12345", mc);
+    const { mounts } = buildMounts(
+      fsReader,
+      "/home/user/foo",
+      "foo-abc12345",
+      mc,
+    );
     expect(mounts).toContain("/root/foo:/home/user/foo:ro");
   });
 
@@ -463,7 +479,12 @@ describe("buildMounts", () => {
     const mc = defaultMountConfig();
     mc.extra_readonly = ["/data/shared"];
     fs.mkdirSync("/data/shared", { recursive: true });
-    const { mounts } = buildMounts(fsReader, "/home/user/foo", "foo-abc12345", mc);
+    const { mounts } = buildMounts(
+      fsReader,
+      "/home/user/foo",
+      "foo-abc12345",
+      mc,
+    );
     expect(mounts).toContain("/data/shared:/data/shared:ro");
   });
 
@@ -472,7 +493,12 @@ describe("buildMounts", () => {
     const mc = defaultMountConfig();
     mc.extra_readwrite = ["/tmp/cache"];
     fs.mkdirSync("/tmp/cache", { recursive: true });
-    const { mounts } = buildMounts(fsReader, "/home/user/foo", "foo-abc12345", mc);
+    const { mounts } = buildMounts(
+      fsReader,
+      "/home/user/foo",
+      "foo-abc12345",
+      mc,
+    );
     expect(mounts).toContain("/tmp/cache:/tmp/cache");
   });
 
@@ -482,7 +508,12 @@ describe("buildMounts", () => {
     mc.forward_ssh_agent = true;
     const relayDir = path.join(home, ".ssh-agent-relay");
     fs.mkdirSync(relayDir, { recursive: true });
-    const { mounts } = buildMounts(fsReader, "/home/user/foo", "foo-abc12345", mc);
+    const { mounts } = buildMounts(
+      fsReader,
+      "/home/user/foo",
+      "foo-abc12345",
+      mc,
+    );
     const sshMount = mounts.find(m => m.includes(".ssh-agent-relay"));
     expect(sshMount).toBeDefined();
     expect(sshMount).toContain(":ro");
@@ -493,7 +524,12 @@ describe("buildMounts", () => {
     const mc = defaultMountConfig();
     mc.forward_ssh_agent = false;
     fs.mkdirSync(path.join(home, ".ssh-agent-relay"), { recursive: true });
-    const { mounts } = buildMounts(fsReader, "/home/user/foo", "foo-abc12345", mc);
+    const { mounts } = buildMounts(
+      fsReader,
+      "/home/user/foo",
+      "foo-abc12345",
+      mc,
+    );
     const sshMount = mounts.find(m => m.includes(".ssh-agent-relay"));
     expect(sshMount).toBeUndefined();
   });
@@ -502,7 +538,12 @@ describe("buildMounts", () => {
     seedConfig();
     const mc = defaultMountConfig();
     fs.writeFileSync(path.join(home, ".gitconfig"), "[user]\n");
-    const { mounts } = buildMounts(fsReader, "/home/user/foo", "foo-abc12345", mc);
+    const { mounts } = buildMounts(
+      fsReader,
+      "/home/user/foo",
+      "foo-abc12345",
+      mc,
+    );
     const gitMount = mounts.find(m => m.includes(".gitconfig"));
     expect(gitMount).toBeDefined();
     expect(gitMount).toContain(":ro");
@@ -513,7 +554,12 @@ describe("buildMounts", () => {
     const mc = defaultMountConfig();
     mc.extra_readonly = ["/home/user/foo"];
     fs.mkdirSync("/home/user/foo", { recursive: true });
-    const { mounts } = buildMounts(fsReader, "/home/user/foo", "foo-abc12345", mc);
+    const { mounts } = buildMounts(
+      fsReader,
+      "/home/user/foo",
+      "foo-abc12345",
+      mc,
+    );
     const projectMounts = mounts.filter(m => m.includes("/root/foo"));
     expect(projectMounts).toHaveLength(1);
   });
@@ -524,7 +570,12 @@ describe("buildMounts", () => {
     mc.auth_mode = "shared";
     fs.mkdirSync(path.join(home, ".claude"), { recursive: true });
     fs.writeFileSync(path.join(home, ".claude.json"), "{}");
-    const { mounts } = buildMounts(fsReader, "/home/user/foo", "foo-abc12345", mc);
+    const { mounts } = buildMounts(
+      fsReader,
+      "/home/user/foo",
+      "foo-abc12345",
+      mc,
+    );
     const authMount = mounts.find(m => m.includes(".claude.json"));
     expect(authMount).toBeDefined();
     expect(authMount).toContain(path.join(home, ".claude.json"));
@@ -534,7 +585,12 @@ describe("buildMounts", () => {
     seedConfig(["claude"]);
     const mc = defaultMountConfig();
     mc.auth_mode = "per_project";
-    const { mounts } = buildMounts(fsReader, "/home/user/foo", "foo-abc12345", mc);
+    const { mounts } = buildMounts(
+      fsReader,
+      "/home/user/foo",
+      "foo-abc12345",
+      mc,
+    );
     const authMount = mounts.find(m => m.includes(".claude.json"));
     expect(authMount).toBeDefined();
     expect(authMount).toContain(CONFIGS_DIR);
@@ -545,9 +601,14 @@ describe("buildMounts", () => {
     const mc = defaultMountConfig();
     mc.history_mode = "shared";
     fs.mkdirSync(path.join(home, ".local/state/claude"), { recursive: true });
-    const { mounts } = buildMounts(fsReader, "/home/user/foo", "foo-abc12345", mc);
-    const historyMount = mounts.find(m =>
-      m.includes(".local/state/claude") && !m.includes(CONFIGS_DIR),
+    const { mounts } = buildMounts(
+      fsReader,
+      "/home/user/foo",
+      "foo-abc12345",
+      mc,
+    );
+    const historyMount = mounts.find(
+      m => m.includes(".local/state/claude") && !m.includes(CONFIGS_DIR),
     );
     expect(historyMount).toBeDefined();
     expect(historyMount).toContain(path.join(home, ".local/state/claude"));
@@ -557,7 +618,12 @@ describe("buildMounts", () => {
     seedConfig(["claude"]);
     const mc = defaultMountConfig();
     mc.history_mode = "isolated";
-    const { mounts } = buildMounts(fsReader, "/home/user/foo", "foo-abc12345", mc);
+    const { mounts } = buildMounts(
+      fsReader,
+      "/home/user/foo",
+      "foo-abc12345",
+      mc,
+    );
     const historyMount = mounts.find(m => m.includes(".local/state/claude"));
     expect(historyMount).toBeDefined();
     expect(historyMount).toContain(CONFIGS_DIR);
@@ -567,9 +633,16 @@ describe("buildMounts", () => {
     seedConfig(["claude"]);
     const mc = defaultMountConfig();
     mc.auth_mode = "shared";
-    const { mounts } = buildMounts(fsReader, "/home/user/foo", "foo-abc12345", mc);
-    const settingsMount = mounts.find(m =>
-      m.includes("/root/.claude") && !m.includes(".claude.json")
+    const { mounts } = buildMounts(
+      fsReader,
+      "/home/user/foo",
+      "foo-abc12345",
+      mc,
+    );
+    const settingsMount = mounts.find(
+      m =>
+        m.includes("/root/.claude")
+        && !m.includes(".claude.json")
         && !m.includes("state"),
     );
     expect(settingsMount).toBeDefined();
@@ -581,10 +654,17 @@ describe("buildMounts", () => {
     const mc = defaultMountConfig();
     fs.mkdirSync(APPDATA_DIR, { recursive: true });
     fs.writeFileSync(CONTAINER_BASHRC_PATH, "# bashrc\n");
-    const { mounts } = buildMounts(fsReader, "/home/user/foo", "foo-abc12345", mc);
+    const { mounts } = buildMounts(
+      fsReader,
+      "/home/user/foo",
+      "foo-abc12345",
+      mc,
+    );
     const bashrcMount = mounts.find(m => m.includes("container.bashrc"));
     expect(bashrcMount).toBeDefined();
-    expect(bashrcMount).toBe(`${CONTAINER_BASHRC_PATH}:/etc/container.bashrc:ro`);
+    expect(bashrcMount).toBe(
+      `${CONTAINER_BASHRC_PATH}:/etc/container.bashrc:ro`,
+    );
   });
 
   it("mounts home child directories as read-only when mount_home_children is true", () => {
@@ -593,7 +673,12 @@ describe("buildMounts", () => {
     mc.mount_home_children = true;
     const childDir = path.join(home, "testchild123");
     fs.mkdirSync(childDir, { recursive: true });
-    const { mounts } = buildMounts(fsReader, "/home/user/foo", "foo-abc12345", mc);
+    const { mounts } = buildMounts(
+      fsReader,
+      "/home/user/foo",
+      "foo-abc12345",
+      mc,
+    );
     const childMount = mounts.find(m => m === `${childDir}:${childDir}:ro`);
     expect(childMount).toBeDefined();
     fs.rmSync(childDir, { recursive: true, force: true });
@@ -607,7 +692,12 @@ describe("buildMounts", () => {
     fs.mkdirSync(path.join(home, ".ssh-agent-relay"), { recursive: true });
     fs.mkdirSync("/home/user/.ssh", { recursive: true });
     fs.writeFileSync("/home/user/.ssh/known_hosts", "");
-    const { mounts } = buildMounts(fsReader, "/home/user/foo", "foo-abc12345", mc);
+    const { mounts } = buildMounts(
+      fsReader,
+      "/home/user/foo",
+      "foo-abc12345",
+      mc,
+    );
     const knownHostsMount = mounts.find(m => m.includes("known_hosts"));
     expect(knownHostsMount).toBeDefined();
     expect(knownHostsMount).toContain("/root/.ssh/known_hosts:ro");

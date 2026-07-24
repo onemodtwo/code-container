@@ -1,18 +1,21 @@
+// eslint-disable-next-line no-restricted-imports -- fs used for symlink resolution (readlinkSync, realpathSync) not in Filesystem abstraction
 import fs from "fs";
 import path from "path";
 import { ContainerClient } from "./container-client";
 import { Filesystem } from "./platform/fs";
-import { homeDir, buildBindMount, APPDATA_DIR, expandHomePath, CONTAINER_BASHRC_PATH } from "./platform/paths";
+import {
+  homeDir,
+  APPDATA_DIR,
+  expandHomePath,
+  CONTAINER_BASHRC_PATH,
+} from "./platform/paths";
 import { Result } from "./types";
 import { HARNESS_PACKS } from "./harness-packs";
 import { TOOL_PACKS } from "./tool-packs";
 import { CONTAINER_IMAGE } from "./docker";
 import { configMountSourcePath, ensureConfigExists } from "./config";
 import { loadMountConfig, loadGlobalConfig, MountConfig } from "./mount-config";
-import {
-  countActiveSessions,
-  getSessionDir,
-} from "./session";
+import { countActiveSessions } from "./session";
 
 const TOOLCHAIN_HIDDEN_PATHS = [
   ".nvm",
@@ -22,9 +25,10 @@ const TOOLCHAIN_HIDDEN_PATHS = [
   ".pyenv",
 ];
 
-function parseMountEntry(
-  entry: string,
-): { hostPath: string; containerPath: string } {
+function parseMountEntry(entry: string): {
+  hostPath: string;
+  containerPath: string;
+} {
   const idx = entry.indexOf(":");
   if (idx < 0) return { hostPath: entry, containerPath: entry };
   return { hostPath: entry.slice(0, idx), containerPath: entry.slice(idx + 1) };
@@ -50,9 +54,7 @@ function resolveVenvInterpreterMount(
     return null;
   }
 
-  const containerInterpreterPath = path.dirname(
-    path.dirname(symlinkTarget),
-  );
+  const containerInterpreterPath = path.dirname(path.dirname(symlinkTarget));
 
   for (const root of plannedMountRoots) {
     if (
@@ -215,9 +217,7 @@ export function buildMounts(
     ]);
 
     function isUnder(target: string, roots: string[]): boolean {
-      return roots.some(
-        r => target === r || target.startsWith(r + path.sep),
-      );
+      return roots.some(r => target === r || target.startsWith(r + path.sep));
     }
 
     try {
@@ -284,9 +284,10 @@ export function buildMounts(
     }
   }
 
-  const resolvedPenvPath = mountConfig.penv_path && !path.isAbsolute(mountConfig.penv_path)
-    ? path.resolve(projectPath, mountConfig.penv_path)
-    : mountConfig.penv_path;
+  const resolvedPenvPath =
+    mountConfig.penv_path && !path.isAbsolute(mountConfig.penv_path)
+      ? path.resolve(projectPath, mountConfig.penv_path)
+      : mountConfig.penv_path;
 
   const venvInterpreterMount = resolveVenvInterpreterMount(
     resolvedPenvPath,
@@ -327,7 +328,8 @@ export function buildMounts(
     walkForSymlinks(
       projectPath,
       mountConfig.project_symlink_depth,
-      (realTarget, symlinkPath) => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars -- second param is part of walkForSymlinks callback signature
+      (realTarget, _symlinkPath) => {
         if (
           realTarget === APPDATA_DIR
           || realTarget.startsWith(APPDATA_DIR + path.sep)
@@ -354,9 +356,7 @@ export function buildMounts(
       mountConfig.ssh_known_hosts_path
       && fs.existsSync(mountConfig.ssh_known_hosts_path)
     ) {
-      addMount(
-        `${mountConfig.ssh_known_hosts_path}:/root/.ssh/known_hosts:ro`,
-      );
+      addMount(`${mountConfig.ssh_known_hosts_path}:/root/.ssh/known_hosts:ro`);
     }
   }
 
@@ -405,9 +405,7 @@ export function buildMounts(
     }
   }
 
-  if (
-    fs.existsSync(CONTAINER_BASHRC_PATH)
-  ) {
+  if (fs.existsSync(CONTAINER_BASHRC_PATH)) {
     addMount(`${CONTAINER_BASHRC_PATH}:/etc/container.bashrc:ro`);
   }
 
@@ -446,7 +444,12 @@ export function createNewContainer(
   cliFlags: string[],
 ): Result<void> {
   const mountConfig = loadMountConfig(projectDirName);
-  const { mounts, containerProjectPath } = buildMounts(fs, projectPath, projectDirName, mountConfig);
+  const { mounts, containerProjectPath } = buildMounts(
+    fs,
+    projectPath,
+    projectDirName,
+    mountConfig,
+  );
   const args = ["-d", "--name", containerName];
 
   args.push("--security-opt", "no-new-privileges");
@@ -467,7 +470,10 @@ export function createNewContainer(
     args.push("-e", `RENV_PATH=${mountConfig.renv_path}`);
   }
   if (mountConfig.extra_ld_library_path.length > 0) {
-    args.push("-e", `LD_LIBRARY_PATH=${mountConfig.extra_ld_library_path.join(":")}`);
+    args.push(
+      "-e",
+      `LD_LIBRARY_PATH=${mountConfig.extra_ld_library_path.join(":")}`,
+    );
   }
   args.push("-w", containerProjectPath);
 
@@ -519,7 +525,10 @@ export function execInteractive(
     args.push("-e", `RENV_PATH=${mountConfig.renv_path}`);
   }
   if (mountConfig.extra_ld_library_path.length > 0) {
-    args.push("-e", `LD_LIBRARY_PATH=${mountConfig.extra_ld_library_path.join(":")}`);
+    args.push(
+      "-e",
+      `LD_LIBRARY_PATH=${mountConfig.extra_ld_library_path.join(":")}`,
+    );
   }
   if (mountConfig.forward_ssh_agent) {
     const sshAuthSock = process.env.SSH_AUTH_SOCK;

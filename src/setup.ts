@@ -1,4 +1,3 @@
-import fs from "fs";
 import path from "path";
 import { Filesystem } from "./platform/fs";
 import {

@@ -53,6 +53,7 @@ Upstream does not make this distinction explicitly -- it copies user-editable Do
 ### JSON configuration replaces text-file mounts and flags
 
 Upstream uses three text files for runtime configuration:
+
 - `MOUNTS.txt` -- one mount spec per line
 - `DOCKER_FLAGS.txt` -- Docker CLI flags passed to every command
 - `DOCKER_RUN_FLAGS.txt` -- flags passed only to `docker run`
@@ -332,41 +333,41 @@ Upstream installs NVM and Node.js 22 inside the container image. This fork relie
 
 ### Files added
 
-| File | Purpose |
-|---|---|
+| File                  | Purpose                                                           |
+| --------------------- | ----------------------------------------------------------------- |
 | `src/mount-config.ts` | Configuration loading, schema validation, per-project merge logic |
-| `container.bashrc` | Container shell environment (mounted at runtime) |
-| `install.json` | Organization-wide install defaults |
-| `ssh-agent-relay.py` | SSH agent socket relay for persistent forwarding |
+| `container.bashrc`    | Container shell environment (mounted at runtime)                  |
+| `install.json`        | Organization-wide install defaults                                |
+| `ssh-agent-relay.py`  | SSH agent socket relay for persistent forwarding                  |
 
 ### Files removed (relative to upstream)
 
-| File | Reason |
-|---|---|
-| `src/args.ts` | Argument parsing inlined in `main.ts` |
-| `src/flags.ts` | Flag files replaced by `config.json` |
-| `resources/Dockerfile.Core` | Four-stage build collapsed to single Dockerfile |
-| `resources/Dockerfile.Harness` | Same |
-| `resources/Dockerfile.Packages` | Same |
-| `resources/Dockerfile.User` | Same |
-| `eslint.config.mjs` | Dev tooling not included |
-| `vitest.config.ts` | Test infrastructure not included |
-| `tsconfig.test.json` | Same |
-| `tests/*` | Same |
-| `__mocks__/*` | Same |
-| `docs/*` | Replaced by comprehensive README |
+| File                            | Reason                                          |
+| ------------------------------- | ----------------------------------------------- |
+| `src/args.ts`                   | Argument parsing inlined in `main.ts`           |
+| `src/flags.ts`                  | Flag files replaced by `config.json`            |
+| `resources/Dockerfile.Core`     | Four-stage build collapsed to single Dockerfile |
+| `resources/Dockerfile.Harness`  | Same                                            |
+| `resources/Dockerfile.Packages` | Same                                            |
+| `resources/Dockerfile.User`     | Same                                            |
+| `eslint.config.mjs`             | Dev tooling not included                        |
+| `vitest.config.ts`              | Test infrastructure not included                |
+| `tsconfig.test.json`            | Same                                            |
+| `tests/*`                       | Same                                            |
+| `__mocks__/*`                   | Same                                            |
+| `docs/*`                        | Replaced by comprehensive README                |
 
 ### Files significantly rewritten
 
-| File | Nature of changes |
-|---|---|
-| `src/main.ts` | Argument parsing inlined; runtime detection added; `mount-config` integration |
-| `src/config.ts` | Removed multi-tool configs/copies; added per-project directory management, path canonicalization, Claude permissions injection |
-| `src/docker.ts` | Configurable runtime; file-based sessions; build args; `--security-opt no-new-privileges`; `--group-add keep-groups` for Podman; runtime bashrc mount |
-| `src/mounts.ts` | Complete rewrite -- declarative mount builder with deduplication, home child enumeration, symlink filtering, ancestor protection, venv auto-detection |
-| `src/commands.ts` | Removed init copy workflow; added mount config integration; session tracking; SSH agent warnings |
-| `scripts/postinstall.js` | Rewritten for `config.json` seeding, runtime detection, env path discovery, config migration |
-| `Dockerfile` | Single file; Rocky Linux base; build args; minimal packages; runtime bashrc mount |
-| `README.md` | Complete rewrite documenting all features, configuration, security model |
-| `AGENTS.md` | Rewritten for fork's architecture |
-| `package.json` | Simplified; removed multi-tool deps; added `engines` field |
+| File                     | Nature of changes                                                                                                                                     |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/main.ts`            | Argument parsing inlined; runtime detection added; `mount-config` integration                                                                         |
+| `src/config.ts`          | Removed multi-tool configs/copies; added per-project directory management, path canonicalization, Claude permissions injection                        |
+| `src/docker.ts`          | Configurable runtime; file-based sessions; build args; `--security-opt no-new-privileges`; `--group-add keep-groups` for Podman; runtime bashrc mount |
+| `src/mounts.ts`          | Complete rewrite -- declarative mount builder with deduplication, home child enumeration, symlink filtering, ancestor protection, venv auto-detection |
+| `src/commands.ts`        | Removed init copy workflow; added mount config integration; session tracking; SSH agent warnings                                                      |
+| `scripts/postinstall.js` | Rewritten for `config.json` seeding, runtime detection, env path discovery, config migration                                                          |
+| `Dockerfile`             | Single file; Rocky Linux base; build args; minimal packages; runtime bashrc mount                                                                     |
+| `README.md`              | Complete rewrite documenting all features, configuration, security model                                                                              |
+| `AGENTS.md`              | Rewritten for fork's architecture                                                                                                                     |
+| `package.json`           | Simplified; removed multi-tool deps; added `engines` field                                                                                            |

@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports -- fs used for session file operations (lock files)
 import fs from "fs";
 import path from "path";
 import { PROJECTS_DIR } from "./platform/paths";

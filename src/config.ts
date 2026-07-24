@@ -1,9 +1,8 @@
 import path from "path";
-import { z } from "zod";
 import { StateSchema, Result, StateData, ConfigMount, Settings } from "./types";
 import { Filesystem } from "./platform/fs";
 import { CONFIGS_DIR } from "./platform/paths";
-import { GlobalMountConfigSchema, HOST_CONFIG_PATH } from "./mount-config";
+import { GlobalMountConfigSchema } from "./mount-config";
 
 export function configMountSourcePath(config: ConfigMount): string {
   return path.join(CONFIGS_DIR, config.config);

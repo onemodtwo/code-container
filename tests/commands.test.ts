@@ -56,19 +56,6 @@ function reset() {
 
 const fsReader = new Filesystem(fs as unknown as FsReader);
 
-function withPlatform<T>(platform: NodeJS.Platform, fn: () => T): T {
-  const originalPlatform = process.platform;
-  Object.defineProperty(process, "platform", { value: platform });
-  const result = fn();
-  if (result instanceof Promise) {
-    return result.finally(() => {
-      Object.defineProperty(process, "platform", { value: originalPlatform });
-    }) as T;
-  }
-  Object.defineProperty(process, "platform", { value: originalPlatform });
-  return result;
-}
-
 vi.mock("fs");
 
 beforeEach(() => {
@@ -80,7 +67,10 @@ describe("buildCommand", () => {
   it("calls buildImage and prints success", () => {
     fs.mkdirSync(APPDATA_DIR, { recursive: true });
     fs.writeFileSync(CONFIG_JSON_PATH, "{}\n");
-    fs.writeFileSync(path.join(APPDATA_DIR, "Dockerfile"), "FROM ubuntu:24.04\n");
+    fs.writeFileSync(
+      path.join(APPDATA_DIR, "Dockerfile"),
+      "FROM ubuntu:24.04\n",
+    );
     const runtime = new ContainerClient(mockExecutor, "docker");
     const settingsStore = new SettingsStore(fsReader, CONFIG_JSON_PATH);
     enqueue({ status: 0 });
@@ -96,7 +86,10 @@ describe("buildCommand", () => {
   it("calls process.exit on build failure", () => {
     fs.mkdirSync(APPDATA_DIR, { recursive: true });
     fs.writeFileSync(CONFIG_JSON_PATH, "{}\n");
-    fs.writeFileSync(path.join(APPDATA_DIR, "Dockerfile"), "FROM ubuntu:24.04\n");
+    fs.writeFileSync(
+      path.join(APPDATA_DIR, "Dockerfile"),
+      "FROM ubuntu:24.04\n",
+    );
     const runtime = new ContainerClient(mockExecutor, "docker");
     const settingsStore = new SettingsStore(fsReader, CONFIG_JSON_PATH);
     enqueue({ status: 1 });
@@ -104,9 +97,9 @@ describe("buildCommand", () => {
     const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => {
       throw new Error("process.exit");
     });
-    expect(() =>
-      buildCommand(runtime, settingsStore, fsReader),
-    ).toThrow("process.exit");
+    expect(() => buildCommand(runtime, settingsStore, fsReader)).toThrow(
+      "process.exit",
+    );
     expect(exitSpy).toHaveBeenCalledWith(1);
     exitSpy.mockRestore();
   });
@@ -263,7 +256,7 @@ function setupSessionStores(): {
 
 describe("createCommand", () => {
   it("creates container when it does not exist", async () => {
-    const { settingsStore, stateStore } = setupSessionStores();
+    const { settingsStore } = setupSessionStores();
     const runtime = new ContainerClient(mockExecutor, "docker");
     enqueue({ status: 0 });
     enqueue({ status: 1 });
@@ -272,13 +265,10 @@ describe("createCommand", () => {
     const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => {
       throw new Error("process.exit");
     });
-    await createCommand(
-      runtime,
-      settingsStore,
-      fsReader,
-      "/project",
-      ["-p", "8080:8080"],
-    );
+    await createCommand(runtime, settingsStore, fsReader, "/project", [
+      "-p",
+      "8080:8080",
+    ]);
     const runCalls = calls.filter(c => c.args[0] === "run");
     expect(runCalls).toHaveLength(1);
     expect(runCalls[0].args).toContain("-p");
@@ -288,7 +278,7 @@ describe("createCommand", () => {
   });
 
   it("errors if container already exists", async () => {
-    const { settingsStore, stateStore } = setupSessionStores();
+    const { settingsStore } = setupSessionStores();
     const runtime = new ContainerClient(mockExecutor, "docker");
     enqueue({ status: 0 });
     enqueue({ status: 0 });
@@ -297,13 +287,7 @@ describe("createCommand", () => {
       throw new Error("process.exit");
     });
     await expect(
-      createCommand(
-        runtime,
-        settingsStore,
-        fsReader,
-        "/project",
-        [],
-      ),
+      createCommand(runtime, settingsStore, fsReader, "/project", []),
     ).rejects.toThrow("process.exit");
     expect(exitSpy).toHaveBeenCalledWith(1);
     exitSpy.mockRestore();
@@ -320,7 +304,14 @@ describe("attachCommand", () => {
       throw new Error("process.exit");
     });
     expect(() =>
-      attachCommand(runtime, settingsStore, fsReader, "/project", undefined, []),
+      attachCommand(
+        runtime,
+        settingsStore,
+        fsReader,
+        "/project",
+        undefined,
+        [],
+      ),
     ).toThrow("process.exit");
     expect(exitSpy).toHaveBeenCalledWith(1);
     exitSpy.mockRestore();
@@ -466,6 +457,8 @@ describe("resolveTarget", () => {
     expect(result).not.toBeNull();
     expect(result!.projectPath).toBe("/test-project");
     expect(result!.projectName).toBe("test-project");
-    expect(result!.containerName).toMatch(/^container-test-project-[a-f0-9]{8}$/);
+    expect(result!.containerName).toMatch(
+      /^container-test-project-[a-f0-9]{8}$/,
+    );
   });
 });

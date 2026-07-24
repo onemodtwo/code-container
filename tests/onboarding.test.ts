@@ -2,7 +2,12 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import path from "path";
 import os from "os";
 import { fs, vol } from "memfs";
-import { CONFIGS_DIR, STATE_PATH, CONFIG_JSON_PATH, APPDATA_DIR } from "../src/platform/paths";
+import {
+  CONFIGS_DIR,
+  STATE_PATH,
+  CONFIG_JSON_PATH,
+  APPDATA_DIR,
+} from "../src/platform/paths";
 import { FsReader, Filesystem } from "../src/platform/fs";
 import { SettingsStore, StateStore } from "../src/config";
 import { Platform } from "../src/platform/os";
@@ -326,7 +331,10 @@ describe("expressSetup", () => {
     fs.mkdirSync(path.dirname(STATE_PATH), { recursive: true });
     fs.mkdirSync(APPDATA_DIR, { recursive: true });
     fs.writeFileSync(CONFIG_JSON_PATH, "{}\n");
-    fs.writeFileSync(path.join(APPDATA_DIR, "Dockerfile"), "FROM ubuntu:24.04\n");
+    fs.writeFileSync(
+      path.join(APPDATA_DIR, "Dockerfile"),
+      "FROM ubuntu:24.04\n",
+    );
     return {
       settingsStore: new SettingsStore(fsReader, CONFIG_JSON_PATH),
       stateStore: new StateStore(fsReader, STATE_PATH),

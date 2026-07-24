@@ -5,11 +5,7 @@ import { Filesystem } from "../platform/fs";
 import { generateProjectDirName } from "../mount-config";
 import { resolveTarget, ResolvedTarget } from "./shared";
 import { execInteractive, stopContainerIfLastSession } from "../container";
-import {
-  trackSessionStart,
-  trackSessionEnd,
-  getSessionDir,
-} from "../session";
+import { trackSessionStart, trackSessionEnd, getSessionDir } from "../session";
 
 export function attachToContainer(
   runtime: ContainerClient,
@@ -77,8 +73,8 @@ export function attachCommand(
   const resolved = resolveTarget(fs, target);
   if (!resolved) process.exit(1);
 
-  const resolvedProjectDirName = projectDirName
-    ?? generateProjectDirName(resolved.projectPath);
+  const resolvedProjectDirName =
+    projectDirName ?? generateProjectDirName(resolved.projectPath);
 
   attachToContainer(runtime, resolved, resolvedProjectDirName, cliFlags);
 }

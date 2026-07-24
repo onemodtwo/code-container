@@ -105,21 +105,26 @@ replaced, extended, or coexists with `mount-config.ts`.
 > lines 1681–2047
 
 The v2 `mounts.ts` (from the diff) uses:
+
 ```typescript
 import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
 ```
+
 and calls `fs.existsSync()`, `fs.readdirSync()`, `fs.realpathSync()`, etc.
 directly.
 
 The v3 `container.ts` uses the `Filesystem` abstraction:
+
 ```typescript
 import { Filesystem } from "./platform/fs";
 ```
+
 and the `Executor` abstraction for process management.
 
 A direct port of the v2 mount code will not compile in v3 because:
+
 1. `fs.existsSync()` → needs `fs.existsSync()` via the `Filesystem` abstraction
 2. `fs.readdirSync()` → needs `fs.readdirSync()` via the `Filesystem` abstraction
 3. `fs.realpathSync()` → the v3 `Filesystem` abstraction may not expose this
@@ -129,7 +134,7 @@ The plan must either:
 (a) Port mount functions to use the v3 `Filesystem` abstraction, or
 (b) Use the `Executor` abstraction to run filesystem operations, or
 (c) Note that the `Filesystem` abstraction needs to be extended to support
-    the operations that `buildMounts()` requires.
+the operations that `buildMounts()` requires.
 
 **Fix required:** Add a note that the v2 mount code must be adapted to v3's
 `Filesystem` abstraction, not ported verbatim. List the specific filesystem
@@ -190,6 +195,7 @@ tracking should be implemented after the per-project config infrastructure.
 
 The plan doesn't specify what the Dockerfile should contain. For a
 multi-tool-supporting fork, the Dockerfile needs to:
+
 - Use `ubuntu:24.04` as base (per modifications2.md)
 - Install core packages (curl, git, build-essential, etc.)
 - Install NVM + Node.js (per plan's §10.7 decision to keep it)
@@ -220,6 +226,7 @@ codebase has no references to these text files except in `src/setup.ts`
 > Write permissions into each project's `settings.json` on project dir creation.
 
 This is Claude-specific. For multi-tool support, the plan should note:
+
 - Claude uses `settings.json` for permission allow/deny lists
 - Other tools (OpenCode, Codex, etc.) have their own config mechanisms
 - The permission deny list should be tool-aware, not just Claude-specific
@@ -234,10 +241,14 @@ other tools' permission systems are not addressed by this plan.
 > diff `src/config.ts` lines 488–510).
 
 The v2 code shows:
+
 ```typescript
 export function generateProjectHash(projectPath: string): string {
-  return crypto.createHash("sha1").update(canonicalizeProjectPath(projectPath))
-    .digest("hex").substring(0, 8);
+  return crypto
+    .createHash("sha1")
+    .update(canonicalizeProjectPath(projectPath))
+    .digest("hex")
+    .substring(0, 8);
 }
 export function generateProjectDirName(projectPath: string): string {
   const canonicalPath = canonicalizeProjectPath(projectPath);
@@ -258,6 +269,7 @@ The plan should specify the format: `<basename>-<8-char-sha1-hash>`.
 
 The plan doesn't specify which files constitute "auth" files for each tool.
 From harness-packs.ts:
+
 - Claude: `~/.claude.json` (auth), `~/.claude/` (settings), `~/.local/state/claude/`
 - OpenCode: `~/.config/opencode/`, `~/.local/state/opencode/`, `~/.local/share/opencode/`
 - Codex: `~/.codex/`
@@ -274,17 +286,18 @@ tools, this may vary.
 
 The plan's implementation order is:
 
-| Phase | Description |
-|-------|-------------|
-| 1 | config.json system (mount-config.ts), per-project overrides, migration |
-| 2 | Mount system rewrite (buildMounts) |
-| 3 | Single Dockerfile |
-| 4 | Security + auth/history |
-| 5 | SSH agent forwarding + session tracking |
-| 6 | Container shell environment |
-| 7 | Install-time seeding + file cleanup |
+| Phase | Description                                                            |
+| ----- | ---------------------------------------------------------------------- |
+| 1     | config.json system (mount-config.ts), per-project overrides, migration |
+| 2     | Mount system rewrite (buildMounts)                                     |
+| 3     | Single Dockerfile                                                      |
+| 4     | Security + auth/history                                                |
+| 5     | SSH agent forwarding + session tracking                                |
+| 6     | Container shell environment                                            |
+| 7     | Install-time seeding + file cleanup                                    |
 
 Issues:
+
 - Phase 3 (single Dockerfile) is placed after Phase 2 (mount system), but the
   mount system is independent of the Dockerfile format. Mount system could be
   implemented first.
@@ -337,11 +350,11 @@ the postinstall.
 
 ## Summary
 
-| Category | Count | Items |
-|----------|-------|-------|
-| Critical | 2 | C1, C2 |
-| Significant | 5 | S1–S5 |
-| Minor | 6 | M1–M6 |
+| Category    | Count | Items  |
+| ----------- | ----- | ------ |
+| Critical    | 2     | C1, C2 |
+| Significant | 5     | S1–S5  |
+| Minor       | 6     | M1–M6  |
 
 The plan is fundamentally sound in its architecture and feature coverage. The
 critical issues are factual errors about the current v3 state that affect the

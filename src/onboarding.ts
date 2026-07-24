@@ -221,12 +221,7 @@ async function customSetup(
       } else {
         const rt = new ContainerClient(executor, runtime);
         clack.log.info("Building container image");
-        const buildResult = buildImage(
-          rt,
-          settingsStore,
-          undefined,
-          fs,
-        );
+        const buildResult = buildImage(rt, settingsStore, undefined, fs);
         if (!buildResult.ok) {
           clack.log.error("Failed to build image");
           clack.log.warn("Run 'container build' manually to retry.");

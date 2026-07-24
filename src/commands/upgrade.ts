@@ -8,8 +8,10 @@ import { fetchLatestVersion, isNewerVersion } from "../update-check";
 import pkg from "../../package.json";
 
 const REPO_URL = "https://github.com/onemodtwo/code-container";
-const INSTALL_SH_URL = "https://raw.githubusercontent.com/onemodtwo/code-container/main/install.sh";
-const INSTALL_PS1_URL = "https://raw.githubusercontent.com/onemodtwo/code-container/main/install.ps1";
+const INSTALL_SH_URL =
+  "https://raw.githubusercontent.com/onemodtwo/code-container/main/install.sh";
+const INSTALL_PS1_URL =
+  "https://raw.githubusercontent.com/onemodtwo/code-container/main/install.ps1";
 
 type InstallSource = "standalone" | "npm" | "unknown";
 

@@ -8,7 +8,12 @@ import {
   CONFIG_JSON_PATH,
   STATE_PATH,
 } from "../src/platform/paths";
-import { configMountSourcePath, ensureConfigExists, SettingsStore, StateStore } from "../src/config";
+import {
+  configMountSourcePath,
+  ensureConfigExists,
+  SettingsStore,
+  StateStore,
+} from "../src/config";
 import { FsReader, Filesystem } from "../src/platform/fs";
 import { maybeCheckForUpdate } from "../src/update-check";
 import { ConfigMount } from "../src/types";
@@ -82,10 +87,7 @@ describe("StateStore", () => {
 
   it("loads state from valid JSON", () => {
     fs.mkdirSync(TEMP_DIR, { recursive: true });
-    fs.writeFileSync(
-      STATE_PATH,
-      JSON.stringify({ lastUpgradeTime: 123 }),
-    );
+    fs.writeFileSync(STATE_PATH, JSON.stringify({ lastUpgradeTime: 123 }));
     const store = new StateStore(fsReader, STATE_PATH);
     const result = store.load();
     expect(result.ok).toBe(true);
@@ -192,7 +194,9 @@ describe("configMountSourcePath", () => {
       mount: "/root/.claude",
       kind: "directory",
     };
-    expect(configMountSourcePath(mount)).toBe(path.join(CONFIGS_DIR, ".claude"));
+    expect(configMountSourcePath(mount)).toBe(
+      path.join(CONFIGS_DIR, ".claude"),
+    );
   });
 
   it("handles nested config paths", () => {
