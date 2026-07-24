@@ -5,8 +5,7 @@ STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM | xargs -r)
 if [ -n "$STAGED_FILES" ]; then
   if ! npx prettier --check --ignore-unknown $STAGED_FILES >/dev/null 2>&1; then
     npx prettier --write --ignore-unknown $STAGED_FILES >/dev/null 2>&1
-    echo "Formatting issues detected. Please stage the formatted files."
-    exit 1
+    git add $STAGED_FILES
   fi
 fi
 
