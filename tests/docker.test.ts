@@ -415,6 +415,12 @@ describe("buildImage", () => {
 
 describe("buildMounts", () => {
   const home = os.homedir();
+  const PROJECT_DIR_NAME = "foo-abc12345";
+  const projectConfigsDir = path.join(
+    PROJECTS_DIR,
+    PROJECT_DIR_NAME,
+    "configs",
+  );
 
   function defaultMountConfig() {
     return {
@@ -456,8 +462,9 @@ describe("buildMounts", () => {
     const { mounts } = buildMounts(
       fsReader,
       "/home/user/foo",
-      "foo-abc12345",
+      PROJECT_DIR_NAME,
       mc,
+      projectConfigsDir,
     );
     expect(mounts).toContain("/home/user/foo:/root/foo");
   });
@@ -469,8 +476,9 @@ describe("buildMounts", () => {
     const { mounts } = buildMounts(
       fsReader,
       "/home/user/foo",
-      "foo-abc12345",
+      PROJECT_DIR_NAME,
       mc,
+      projectConfigsDir,
     );
     expect(mounts).toContain("/home/user/foo:/root/foo:ro");
   });
@@ -483,8 +491,9 @@ describe("buildMounts", () => {
     const { mounts } = buildMounts(
       fsReader,
       "/home/user/foo",
-      "foo-abc12345",
+      PROJECT_DIR_NAME,
       mc,
+      projectConfigsDir,
     );
     expect(mounts).toContain("/data/shared:/data/shared:ro");
   });
@@ -497,8 +506,9 @@ describe("buildMounts", () => {
     const { mounts } = buildMounts(
       fsReader,
       "/home/user/foo",
-      "foo-abc12345",
+      PROJECT_DIR_NAME,
       mc,
+      projectConfigsDir,
     );
     expect(mounts).toContain("/tmp/cache:/tmp/cache");
   });
@@ -512,8 +522,9 @@ describe("buildMounts", () => {
     const { mounts } = buildMounts(
       fsReader,
       "/home/user/foo",
-      "foo-abc12345",
+      PROJECT_DIR_NAME,
       mc,
+      projectConfigsDir,
     );
     const sshMount = mounts.find(m => m.includes(".ssh-agent-relay"));
     expect(sshMount).toBeDefined();
@@ -528,8 +539,9 @@ describe("buildMounts", () => {
     const { mounts } = buildMounts(
       fsReader,
       "/home/user/foo",
-      "foo-abc12345",
+      PROJECT_DIR_NAME,
       mc,
+      projectConfigsDir,
     );
     const sshMount = mounts.find(m => m.includes(".ssh-agent-relay"));
     expect(sshMount).toBeUndefined();
@@ -542,8 +554,9 @@ describe("buildMounts", () => {
     const { mounts } = buildMounts(
       fsReader,
       "/home/user/foo",
-      "foo-abc12345",
+      PROJECT_DIR_NAME,
       mc,
+      projectConfigsDir,
     );
     const gitMount = mounts.find(m => m.includes(".gitconfig"));
     expect(gitMount).toBeDefined();
@@ -558,8 +571,9 @@ describe("buildMounts", () => {
     const { mounts } = buildMounts(
       fsReader,
       "/home/user/foo",
-      "foo-abc12345",
+      PROJECT_DIR_NAME,
       mc,
+      projectConfigsDir,
     );
     const projectMounts = mounts.filter(m => m.includes("/root/foo"));
     expect(projectMounts).toHaveLength(1);
@@ -574,8 +588,9 @@ describe("buildMounts", () => {
     const { mounts } = buildMounts(
       fsReader,
       "/home/user/foo",
-      "foo-abc12345",
+      PROJECT_DIR_NAME,
       mc,
+      projectConfigsDir,
     );
     const authMount = mounts.find(m => m.includes(".claude.json"));
     expect(authMount).toBeDefined();
@@ -589,8 +604,9 @@ describe("buildMounts", () => {
     const { mounts } = buildMounts(
       fsReader,
       "/home/user/foo",
-      "foo-abc12345",
+      PROJECT_DIR_NAME,
       mc,
+      projectConfigsDir,
     );
     const authMount = mounts.find(m => m.includes(".claude.json"));
     expect(authMount).toBeDefined();
@@ -605,8 +621,9 @@ describe("buildMounts", () => {
     const { mounts } = buildMounts(
       fsReader,
       "/home/user/foo",
-      "foo-abc12345",
+      PROJECT_DIR_NAME,
       mc,
+      projectConfigsDir,
     );
     const historyMount = mounts.find(
       m => m.includes(".local/state/claude") && !m.includes(CONFIGS_DIR),
@@ -622,23 +639,25 @@ describe("buildMounts", () => {
     const { mounts } = buildMounts(
       fsReader,
       "/home/user/foo",
-      "foo-abc12345",
+      PROJECT_DIR_NAME,
       mc,
+      projectConfigsDir,
     );
     const historyMount = mounts.find(m => m.includes(".local/state/claude"));
     expect(historyMount).toBeDefined();
     expect(historyMount).toContain(CONFIGS_DIR);
   });
 
-  it("mounts settings config from managed dir regardless of auth_mode", () => {
+  it("mounts settings config from project-specific config dir", () => {
     seedConfig(["claude"]);
     const mc = defaultMountConfig();
     mc.auth_mode = "shared";
     const { mounts } = buildMounts(
       fsReader,
       "/home/user/foo",
-      "foo-abc12345",
+      PROJECT_DIR_NAME,
       mc,
+      projectConfigsDir,
     );
     const settingsMount = mounts.find(
       m =>
@@ -647,7 +666,7 @@ describe("buildMounts", () => {
         && !m.includes("state"),
     );
     expect(settingsMount).toBeDefined();
-    expect(settingsMount).toContain(CONFIGS_DIR);
+    expect(settingsMount).toContain(projectConfigsDir);
   });
 
   it("mounts container.bashrc when present", () => {
@@ -658,8 +677,9 @@ describe("buildMounts", () => {
     const { mounts } = buildMounts(
       fsReader,
       "/home/user/foo",
-      "foo-abc12345",
+      PROJECT_DIR_NAME,
       mc,
+      projectConfigsDir,
     );
     const bashrcMount = mounts.find(m => m.includes("container.bashrc"));
     expect(bashrcMount).toBeDefined();
@@ -677,8 +697,9 @@ describe("buildMounts", () => {
     const { mounts } = buildMounts(
       fsReader,
       "/home/user/foo",
-      "foo-abc12345",
+      PROJECT_DIR_NAME,
       mc,
+      projectConfigsDir,
     );
     const childMount = mounts.find(m => m === `${childDir}:${childDir}:ro`);
     expect(childMount).toBeDefined();
@@ -696,8 +717,9 @@ describe("buildMounts", () => {
     const { mounts } = buildMounts(
       fsReader,
       "/home/user/foo",
-      "foo-abc12345",
+      PROJECT_DIR_NAME,
       mc,
+      projectConfigsDir,
     );
     const knownHostsMount = mounts.find(m => m.includes("known_hosts"));
     expect(knownHostsMount).toBeDefined();

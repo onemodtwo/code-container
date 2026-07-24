@@ -6,6 +6,7 @@ import { Filesystem } from "./platform/fs";
 import {
   homeDir,
   APPDATA_DIR,
+  PROJECTS_DIR,
   expandHomePath,
   CONTAINER_BASHRC_PATH,
 } from "./platform/paths";
@@ -122,6 +123,7 @@ export function buildMounts(
   projectPath: string,
   projectDirName: string,
   mountConfig: MountConfig,
+  projectConfigsDir: string,
 ): { mounts: string[]; containerProjectPath: string } {
   const mounts: string[] = [];
   const mountIndex = new Map<string, number>();
@@ -368,7 +370,10 @@ export function buildMounts(
     for (const c of pack.config) {
       const configRole = "role" in c ? c.role : undefined;
       let sourcePath: string;
-      if (configRole === "auth" && mountConfig.auth_mode === "shared") {
+      if (configRole === "settings") {
+        ensureConfigExists(fsInstance, c);
+        sourcePath = path.join(projectConfigsDir, c.config);
+      } else if (configRole === "auth" && mountConfig.auth_mode === "shared") {
         sourcePath = expandHomePath(c.host);
         if (!fs.existsSync(sourcePath)) {
           ensureConfigExists(fsInstance, c);
@@ -394,7 +399,12 @@ export function buildMounts(
         addMount(`${sourcePath}:${c.mount}`);
       }
     }
-    mergePermissionsIntoConfig(fsInstance, id, mountConfig.tool_permissions);
+    mergePermissionsIntoConfig(
+      fsInstance,
+      id,
+      mountConfig.tool_permissions,
+      projectConfigsDir,
+    );
   }
 
   const enabledToolIds = loadGlobalConfigEnabledTools();
@@ -446,11 +456,13 @@ export function createNewContainer(
   cliFlags: string[],
 ): Result<void> {
   const mountConfig = loadMountConfig(projectDirName);
+  const projectConfigsDir = path.join(PROJECTS_DIR, projectDirName, "configs");
   const { mounts, containerProjectPath } = buildMounts(
     fs,
     projectPath,
     projectDirName,
     mountConfig,
+    projectConfigsDir,
   );
   const args = ["-d", "--name", containerName];
 

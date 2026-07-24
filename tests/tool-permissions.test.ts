@@ -162,6 +162,56 @@ describe("mergePermissionsIntoConfig", () => {
     });
   });
 
+  describe("project-specific isolation", () => {
+    it("writes to project-specific directory without affecting other projects", () => {
+      const projectADir = rawFs.mkdtempSync(
+        path.join(os.tmpdir(), "tp-projA-"),
+      );
+      const projectBDir = rawFs.mkdtempSync(
+        path.join(os.tmpdir(), "tp-projB-"),
+      );
+
+      const tpA: ToolPermissions = {
+        allow: ["Bash(*)", "Read"],
+        deny: ["Bash(curl*)"],
+      };
+      const tpB: ToolPermissions = {
+        allow: ["Read", "Write"],
+        deny: ["Bash(rm *)"],
+      };
+
+      mergePermissionsIntoConfig(fs, "claude", tpA, projectADir);
+      mergePermissionsIntoConfig(fs, "claude", tpB, projectBDir);
+
+      const resultA = readJson(
+        path.join(projectADir, ".claude", "settings.json"),
+      );
+      const resultB = readJson(
+        path.join(projectBDir, ".claude", "settings.json"),
+      );
+
+      expect(resultA.permissions.allow).toEqual(
+        expect.arrayContaining(["Bash(*)", "Read"]),
+      );
+      expect(resultA.permissions.allow).toHaveLength(2);
+      expect(resultA.permissions.deny).toEqual(["Bash(curl*)"]);
+
+      expect(resultB.permissions.allow).toEqual(["Read", "Write"]);
+      expect(resultB.permissions.deny).toEqual(["Bash(rm *)"]);
+    });
+
+    it("does not create files in global CONFIGS_DIR when project dir is specified", () => {
+      const projectDir = rawFs.mkdtempSync(path.join(os.tmpdir(), "tp-proj-"));
+      const tp: ToolPermissions = { allow: ["Read"], deny: [] };
+
+      mergePermissionsIntoConfig(fs, "claude", tp, projectDir);
+
+      expect(
+        rawFs.existsSync(path.join(projectDir, ".claude", "settings.json")),
+      ).toBe(true);
+    });
+  });
+
   describe("unknown harness", () => {
     it("does nothing for unknown harness ids", () => {
       const tp: ToolPermissions = { allow: ["*"], deny: [] };
