@@ -4,6 +4,8 @@ Isolated environments for AI coding agents. One image, one container per project
 
 > This is a fork of [container](https://github.com/aerovato/container) by aerovato, supporting multiple AI coding tools with a hardened security model and host-only configuration.
 
+**Requirements:** [Node.js](https://nodejs.org/) (for building), [Bun](https://bun.sh/) (for compiling the binary), and a container runtime ([Podman](https://podman.io/) preferred or [Docker](https://www.docker.com/)).
+
 ## How it works
 
 - Your project directory is mounted **read-write by default** — overrideable to read-only per project
@@ -80,6 +82,12 @@ git clone <internal-repo-url>
 cd code-container
 npm install
 npm run build
+```
+
+By default, `npm install -g` creates symlinks back to the repo — if the repo moves or is deleted, the `container` command breaks. To copy the binary instead (recommended):
+
+```bash
+npm config set install-links true
 ```
 
 If you have permission to write to the global npm prefix:

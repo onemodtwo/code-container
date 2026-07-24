@@ -4,6 +4,8 @@ Isolated environments for AI coding agents. One image, one container per project
 
 > This is a fork of [container](https://github.com/aerovato/container) by aerovato, supporting multiple AI coding tools with a hardened security model and host-only configuration.
 
+**Requirements:** [Node.js](https://nodejs.org/) (for building), [Bun](https://bun.sh/) (for compiling the binary), and a container runtime ([Podman](https://podman.io/) preferred or [Docker](https://www.docker.com/)).
+
 ## How it works
 
 - Your project directory is mounted **read-write by default** — overrideable to read-only per project
@@ -82,6 +84,12 @@ npm install
 npm run build
 ```
 
+By default, `npm install -g` creates symlinks back to the repo — if the repo moves or is deleted, the `container` command breaks. To copy the binary instead (recommended):
+
+```bash
+npm config set install-links true
+```
+
 If you have permission to write to the global npm prefix:
 
 ```bash
@@ -94,7 +102,7 @@ If not (no sudo access), install to your user-local prefix:
 npm install -g . --prefix ~/.local
 ```
 
-> **Note:** `npm install` only needs to be run once (or when `package.json` changes). `npm run build` must be run before every install or reinstall — the compiled `dist/` directory is not committed to the repo.
+> **Note:** `npm install` only needs to be run once (or when `package.json` changes). `npm run build` must be run before every install or reinstall — the compiled `dist/container` binary is not committed to the repo.
 
 For the local install, `~/.local/bin` must be on your `PATH`. Add to `~/.bashrc` if needed:
 
