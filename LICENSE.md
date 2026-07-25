@@ -1,7 +1,9 @@
 BSD 3-Clause License
 
 Copyright (c) 2026, kevinMEH
+
 Copyright (c) 2026, onemodtwo
+
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without

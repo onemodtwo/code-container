@@ -2,7 +2,7 @@
 
 Isolated environments for AI coding agents. One image, one container per project, minimal host exposure.
 
-> This is a fork of [container](https://github.com/aerovato/container) by aerovato, supporting multiple AI coding tools with a hardened security model and host-only configuration.
+> This is a fork of [container (v3.5.1)](https://github.com/aerovato/container) by aerovato, supporting multiple AI coding tools with a hardened security model and host-only configuration.
 
 **Requirements:** [Node.js](https://nodejs.org/) (for building), [Bun](https://bun.sh/) (for compiling the binary), and a container runtime ([Podman](https://podman.io/) preferred or [Docker](https://www.docker.com/)).
 
