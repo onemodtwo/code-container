@@ -80,7 +80,6 @@ RUN if [ "$INSTALL_GO" = "true" ]; then \
 
 RUN if [ "$INSTALL_UV" = "true" ]; then \
       INSTALLER_NO_MODIFY_PROFILE=1 curl -LsSf https://astral.sh/uv/install.sh | sh; \
-      echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc; \
     fi
 
 RUN if [ "$INSTALL_GH" = "true" ]; then \
@@ -125,8 +124,7 @@ ARG INSTALL_NITRO=false
 ARG INSTALL_ANTIGRAVITY=false
 
 RUN if [ "$INSTALL_CLAUDE" = "true" ]; then \
-      curl -fsSL https://claude.ai/install.sh | bash \
-      && echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc; \
+      curl -fsSL https://claude.ai/install.sh | bash; \
     fi
 
 RUN if [ "$INSTALL_OPENCODE" = "true" ]; then \
@@ -150,8 +148,7 @@ RUN if [ "$INSTALL_COPILOT" = "true" ]; then \
     fi
 
 RUN if [ "$INSTALL_GROK" = "true" ]; then \
-      curl -fsSL https://x.ai/cli/install.sh | bash \
-      && echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc; \
+      curl -fsSL https://x.ai/cli/install.sh | bash; \
     fi
 
 RUN if [ "$INSTALL_CURSOR" = "true" ]; then \
@@ -163,6 +160,7 @@ RUN if [ "$INSTALL_NITRO" = "true" ]; then \
     fi
 
 RUN if [ "$INSTALL_ANTIGRAVITY" = "true" ]; then \
-      curl -fsSL https://antigravity.google/cli/install.sh | bash \
-      && echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc; \
+      curl -fsSL https://antigravity.google/cli/install.sh | bash; \
     fi
+
+RUN echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
