@@ -64,7 +64,6 @@ export const HARNESS_PACKS = {
         mount: "/root/.local/share/opencode",
         kind: "directory",
         role: "settings",
-        readonly: true,
       },
       {
         host: "~/.local/share/opentui",
@@ -72,7 +71,6 @@ export const HARNESS_PACKS = {
         mount: "/root/.local/share/opentui",
         kind: "directory",
         role: "settings",
-        readonly: true,
       },
     ],
   },
