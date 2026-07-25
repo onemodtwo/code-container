@@ -25,12 +25,12 @@ const TOOL_NAME_MAP: Record<string, string> = {
   lsp: "lsp",
 };
 
-const HARNESS_PERMISSION_FILES: Record<string, string> = {
+export const HARNESS_PERMISSION_FILES: Record<string, string> = {
   claude: "settings.json",
   opencode: "opencode.json",
 };
 
-const HARNESS_CONFIG_DIRS: Record<string, string> = {
+export const HARNESS_CONFIG_DIRS: Record<string, string> = {
   claude: ".claude",
   opencode: ".opencode",
 };

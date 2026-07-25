@@ -16,7 +16,11 @@ import { TOOL_PACKS } from "./tool-packs";
 import { CONTAINER_IMAGE } from "./docker";
 import { configMountSourcePath, ensureConfigExists } from "./config";
 import { loadMountConfig, loadGlobalConfig, MountConfig } from "./mount-config";
-import { mergePermissionsIntoConfig } from "./tool-permissions";
+import {
+  mergePermissionsIntoConfig,
+  HARNESS_PERMISSION_FILES,
+  HARNESS_CONFIG_DIRS,
+} from "./tool-permissions";
 import { countActiveSessions } from "./session";
 
 const TOOLCHAIN_HIDDEN_PATHS = [
@@ -408,6 +412,18 @@ export function buildMounts(
       mountConfig.tool_permissions,
       projectConfigsDir,
     );
+    const permFile = HARNESS_PERMISSION_FILES[id];
+    const permDir = HARNESS_CONFIG_DIRS[id];
+    if (permFile && permDir) {
+      const permSource = path.join(projectConfigsDir, permDir, permFile);
+      const permMount =
+        id === "opencode"
+          ? `/root/.config/${permDir}/${permFile}`
+          : `/root/${permDir}/${permFile}`;
+      if (fs.existsSync(permSource)) {
+        addMount(`${permSource}:${permMount}:ro`);
+      }
+    }
   }
 
   const enabledToolIds = loadGlobalConfigEnabledTools();
