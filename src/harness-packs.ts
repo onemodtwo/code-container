@@ -17,7 +17,6 @@ export const HARNESS_PACKS = {
         mount: "/root/.claude",
         kind: "directory",
         role: "settings",
-        readonly: true,
       },
       {
         host: "~/.claude.json",
@@ -49,7 +48,6 @@ export const HARNESS_PACKS = {
         mount: "/root/.config/opencode",
         kind: "directory",
         role: "settings",
-        readonly: true,
       },
       {
         host: "~/.local/state/opencode",
