@@ -33,7 +33,7 @@ __container_prompt() {
       branch=" ${cyan}(${b})${reset}"
     fi
   fi
-  PS1="[container] ${dir}${branch} \$ "
+  PS1="${green}[container]${reset} ${dir}${branch} \$ "
 }
 __container_prompt
 
