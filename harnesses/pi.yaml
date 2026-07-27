@@ -1,0 +1,11 @@
+id: pi
+name: Pi
+detect:
+  command: pi
+install:
+  - "RUN npm install -g @earendil-works/pi-coding-agent"
+config:
+  - host: ~/.pi
+    container: /root/.pi
+    kind: directory
+    role: data

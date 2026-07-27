@@ -26,6 +26,7 @@ export interface HarnessPack {
   name: string;
   shouldEnable: (executor: Executor) => boolean;
   dockerfileLines: string[];
+  buildArgName: string;
   config: ConfigMount[];
 }
 

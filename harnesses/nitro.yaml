@@ -1,0 +1,11 @@
+id: nitro
+name: Aerovato Nitro
+detect:
+  command: nitro
+install:
+  - "RUN npm install -g @aerovato/nitro"
+config:
+  - host: ~/.nitro
+    container: /root/.nitro
+    kind: directory
+    role: data

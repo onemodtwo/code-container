@@ -1,0 +1,11 @@
+id: copilot
+name: GitHub Copilot CLI
+detect:
+  command: copilot
+install:
+  - "RUN npm install -g @github/copilot"
+config:
+  - host: ~/.copilot
+    container: /root/.copilot
+    kind: directory
+    role: data

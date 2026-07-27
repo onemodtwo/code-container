@@ -23,6 +23,43 @@ import {
 
 vi.mock("fs");
 
+vi.mock("../src/harness-packs", () => ({
+  HARNESS_PACKS: {
+    claude: {
+      id: "claude",
+      name: "Claude Code",
+      shouldEnable: () => true,
+      dockerfileLines: [],
+      buildArgName: "INSTALL_CLAUDE",
+      config: [
+        {
+          host: "~/.claude",
+          config: ".claude",
+          mount: "/root/.claude",
+          kind: "directory",
+          role: "settings",
+        },
+        {
+          host: "~/.claude.json",
+          config: ".claude.json",
+          mount: "/root/.claude.json",
+          kind: "file",
+          role: "auth",
+          readonly: true,
+          defaultContents: "{}\n",
+        },
+        {
+          host: "~/.local/state/claude",
+          config: ".local/state/claude",
+          mount: "/root/.local/state/claude",
+          kind: "directory",
+          role: "history",
+        },
+      ],
+    },
+  },
+}));
+
 const calls: Array<{ command: string; args: string[]; options?: object }> = [];
 const queue: Array<{
   status: number | null;

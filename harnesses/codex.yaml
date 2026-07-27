@@ -1,0 +1,11 @@
+id: codex
+name: OpenAI Codex
+detect:
+  command: codex
+install:
+  - "RUN npm install -g @openai/codex"
+config:
+  - host: ~/.codex
+    container: /root/.codex
+    kind: directory
+    role: data

@@ -1,0 +1,21 @@
+id: claude
+name: Claude Code
+detect:
+  command: claude
+install:
+  - "RUN curl -fsSL https://claude.ai/install.sh | bash"
+config:
+  - host: ~/.claude
+    container: /root/.claude
+    kind: directory
+    role: settings
+  - host: ~/.claude.json
+    container: /root/.claude.json
+    kind: file
+    role: auth
+    readonly: true
+    default_contents: "{}\n"
+  - host: ~/.local/state/claude
+    container: /root/.local/state/claude
+    kind: directory
+    role: history

@@ -1,0 +1,11 @@
+id: grok
+name: Grok Build
+detect:
+  command: grok
+install:
+  - "RUN curl -fsSL https://x.ai/cli/install.sh | bash"
+config:
+  - host: ~/.grok
+    container: /root/.grok
+    kind: directory
+    role: data

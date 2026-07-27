@@ -4,6 +4,7 @@ import { SettingsStore } from "./config";
 import { Filesystem } from "./platform/fs";
 import { APPDATA_DIR, DOCKERFILE_PATH } from "./platform/paths";
 import { loadGlobalConfig } from "./mount-config";
+import { HARNESS_PACKS } from "./harness-packs";
 import { Result } from "./types";
 import path from "path";
 // eslint-disable-next-line no-restricted-imports -- fs used for Dockerfile readFileSync (not in Filesystem abstraction)
@@ -27,18 +28,13 @@ const TOOL_BUILD_ARG_MAP: Record<string, string> = {
   neovim: "INSTALL_NEOVIM",
 };
 
-const HARNESS_BUILD_ARG_MAP: Record<string, string> = {
-  claude: "INSTALL_CLAUDE",
-  opencode: "INSTALL_OPENCODE",
-  codex: "INSTALL_CODEX",
-  pi: "INSTALL_PI",
-  gemini: "INSTALL_GEMINI",
-  copilot: "INSTALL_COPILOT",
-  grok: "INSTALL_GROK",
-  cursor: "INSTALL_CURSOR",
-  nitro: "INSTALL_NITRO",
-  antigravity: "INSTALL_ANTIGRAVITY",
-};
+function getHarnessBuildArgMap(): Record<string, string> {
+  const map: Record<string, string> = {};
+  for (const [id, pack] of Object.entries(HARNESS_PACKS)) {
+    map[id] = pack.buildArgName;
+  }
+  return map;
+}
 
 function copyManagedDockerfile(fsInstance: Filesystem): void {
   const sourceDockerfile = path.resolve(__dirname, "..", "Dockerfile");
@@ -74,9 +70,10 @@ export function buildImage(
     }
   }
 
+  const harnessBuildArgMap = getHarnessBuildArgMap();
   const enabledHarnesses = config.enabledHarnesses ?? [];
   for (const id of enabledHarnesses) {
-    const argName = HARNESS_BUILD_ARG_MAP[id];
+    const argName = harnessBuildArgMap[id];
     if (argName) {
       buildArgs.push("--build-arg", `${argName}=true`);
     }

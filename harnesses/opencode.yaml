@@ -1,0 +1,23 @@
+id: opencode
+name: OpenCode
+detect:
+  command: opencode
+install:
+  - "RUN npm install -g opencode-ai"
+config:
+  - host: ~/.config/opencode
+    container: /root/.config/opencode
+    kind: directory
+    role: settings
+  - host: ~/.local/state/opencode
+    container: /root/.local/state/opencode
+    kind: directory
+    role: data
+  - host: ~/.local/share/opencode
+    container: /root/.local/share/opencode
+    kind: directory
+    role: data
+  - host: ~/.local/share/opentui
+    container: /root/.local/share/opentui
+    kind: directory
+    role: data

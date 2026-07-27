@@ -1,0 +1,11 @@
+id: gemini
+name: Gemini CLI
+detect:
+  command: gemini
+install:
+  - "RUN npm install -g @google/gemini-cli"
+config:
+  - host: ~/.gemini
+    container: /root/.gemini
+    kind: directory
+    role: data

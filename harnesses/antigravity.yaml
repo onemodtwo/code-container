@@ -1,0 +1,11 @@
+id: antigravity
+name: Antigravity CLI
+detect:
+  command: agy
+install:
+  - "RUN curl -fsSL https://antigravity.google/cli/install.sh | bash"
+config:
+  - host: ~/.gemini/antigravity-cli
+    container: /root/.gemini/antigravity-cli
+    kind: directory
+    role: data

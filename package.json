@@ -11,7 +11,8 @@
     "scripts/postinstall.js",
     "install.json",
     "container.bashrc",
-    "Dockerfile"
+    "Dockerfile",
+    "harnesses"
   ],
   "scripts": {
     "postinstall": "node scripts/postinstall.js",
@@ -57,6 +58,7 @@
   },
   "dependencies": {
     "@clack/prompts": "^1.4.0",
+    "yaml": "^2.9.0",
     "zod": "^4.3.6"
   },
   "keywords": [

@@ -1,0 +1,19 @@
+id: cursor
+name: Cursor CLI
+detect:
+  command: cursor-agent
+install:
+  - "RUN curl https://cursor.com/install -fsS | bash"
+config:
+  - host: ~/.cursor
+    container: /root/.cursor
+    kind: directory
+    role: data
+  - host: ~/.config/cursor
+    container: /root/.config/cursor
+    kind: directory
+    role: data
+  - host: ~/.local/share/cursor-agent
+    container: /root/.local/share/cursor-agent
+    kind: directory
+    role: data

@@ -27,6 +27,74 @@ import { Settings } from "../src/types";
 
 vi.mock("fs");
 
+vi.mock("../src/harness-packs", () => ({
+  HARNESS_PACKS: {
+    opencode: {
+      id: "opencode",
+      name: "OpenCode",
+      shouldEnable: (exec: {
+        spawnSync: (cmd: string, args: string[]) => { status: number };
+      }) => {
+        const r = exec.spawnSync("which", ["opencode"]);
+        return r.status === 0;
+      },
+      dockerfileLines: [],
+      buildArgName: "INSTALL_OPENCODE",
+      config: [],
+    },
+    codex: {
+      id: "codex",
+      name: "OpenAI Codex",
+      shouldEnable: (exec: {
+        spawnSync: (cmd: string, args: string[]) => { status: number };
+      }) => {
+        const r = exec.spawnSync("which", ["codex"]);
+        return r.status === 0;
+      },
+      dockerfileLines: [],
+      buildArgName: "INSTALL_CODEX",
+      config: [],
+    },
+    claude: {
+      id: "claude",
+      name: "Claude Code",
+      shouldEnable: (exec: {
+        spawnSync: (cmd: string, args: string[]) => { status: number };
+      }) => {
+        const r = exec.spawnSync("which", ["claude"]);
+        return r.status === 0;
+      },
+      dockerfileLines: [],
+      buildArgName: "INSTALL_CLAUDE",
+      config: [
+        {
+          host: "~/.claude",
+          config: ".claude",
+          mount: "/root/.claude",
+          kind: "directory",
+          role: "settings",
+        },
+        {
+          host: "~/.claude.json",
+          config: ".claude.json",
+          mount: "/root/.claude.json",
+          kind: "file",
+          role: "auth",
+          readonly: true,
+          defaultContents: "{}\n",
+        },
+        {
+          host: "~/.local/state/claude",
+          config: ".local/state/claude",
+          mount: "/root/.local/state/claude",
+          kind: "directory",
+          role: "history",
+        },
+      ],
+    },
+  },
+}));
+
 const fsReader = new Filesystem(fs as unknown as FsReader);
 
 beforeEach(() => {
