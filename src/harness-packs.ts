@@ -54,7 +54,7 @@ export const HARNESS_PACKS = {
         config: ".local/state/opencode",
         mount: "/root/.local/state/opencode",
         kind: "directory",
-        role: "history",
+        role: "data",
       },
       {
         host: "~/.local/share/opencode",
