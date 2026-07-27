@@ -40,9 +40,13 @@ The fork replaces this with:
 | `install.json`                   | Organization-wide install defaults (68 lines). Seeds `config.json` at install time with base image, tool permissions deny-list, mount defaults.                                                                        |
 | `scripts/postinstall.js`         | Install-time setup (289 lines). Auto-detects container runtime, discovers SSH/Python/R paths, writes `config.json`, copies managed files, handles config migration on reinstall.                                       |
 | `scripts/build-local.sh`         | Platform-aware build script (30 lines). Detects OS/architecture, runs `bun build --compile` for the correct target.                                                                                                    |
+| `src/harness-loader.ts`          | Config-driven harness loader (160 lines). Reads YAML configs from `harnesses/`, validates with Zod, applies platform overrides, derives `config` paths from `host`, builds `HarnessPack` objects.                      |
 | `src/mount-config.ts`            | Configuration backbone (209 lines). `GlobalMountConfigSchema` (Zod), `ProjectOverrideSchema`, `loadMountConfig()` (global + per-project merge), `generateProjectDirName()`.                                            |
 | `src/session.ts`                 | File-based session tracking (47 lines). PID lock files in `~/.code-container/projects/<name>-<hash>/sessions/`. Replaces unreliable process-table scanning.                                                            |
 | `src/tool-permissions.ts`        | Permission management (186 lines). Translates canonical allow/deny rules into Claude `settings.json` and OpenCode `opencode.json` formats. Supports deep merging.                                                      |
+| `harnesses/*.yaml` (10 files)    | YAML harness definitions. One file per harness with `id`, `name`, `detect.command`, `install` commands, and `config` mount entries with required `role` annotations. Adding a harness = creating a YAML file.          |
+| `planned-additions.md`           | Roadmap for fully config-generated Dockerfile (tool YAML configs + generator).                                                                                                                                         |
+| `tests/harness-loader.test.ts`   | Harness loader tests (7 tests). Validates YAML parsing, Zod schema, config derivation, platform overrides.                                                                                                             |
 | `tests/mount-config.test.ts`     | Schema validation, config loading, project dir name generation, override merging tests (184 lines).                                                                                                                    |
 | `tests/session.test.ts`          | Session lifecycle, PID counting, stale lock cleanup tests (131 lines).                                                                                                                                                 |
 | `tests/tool-permissions.test.ts` | Permission translation and merging tests (223 lines).                                                                                                                                                                  |
@@ -110,7 +114,8 @@ Replaced unreliable `ContainerClient.attachedSessionCount()` (process-table scan
 Completely rewritten:
 
 - Removed four-stage build pipeline (`BUILD_ORDER`, `shouldBuild()`, `clearBuildDirty()`)
-- Added `TOOL_BUILD_ARG_MAP` and `HARNESS_BUILD_ARG_MAP` dictionaries
+- `TOOL_BUILD_ARG_MAP` still hardcoded for tools (pending tool YAML refactor)
+- `HARNESS_BUILD_ARG_MAP` **derived dynamically** from `HARNESS_PACKS` via `getHarnessBuildArgMap()` — no more hardcoded dictionary
 - Added `copyManagedDockerfile()` to install packaged Dockerfile
 - `buildImage()` reads enabled tools/harnesses from config, constructs `--build-arg` flags, builds single image
 
@@ -127,15 +132,20 @@ Removed: `ARCHIVE_DIR`, `SETTINGS_PATH`, `CORE_DOCKERFILE_PATH`, `TOOLS_DOCKERFI
 
 Added: `CONFIG_JSON_PATH`, `PROJECTS_DIR`, `DOCKERFILE_PATH`, `CONTAINER_BASHRC_PATH`
 
-### Harness Packs (`src/harness-packs.ts`)
+### Harness Packs (`src/harness-packs.ts` + `harnesses/*.yaml`)
 
-Added `role` annotations to config entries:
+Completely rewritten from hardcoded TypeScript to config-driven YAML:
 
-- `.claude` -> `role: "settings"`
-- `.claude.json` -> `role: "auth"`, `readonly: true`
-- `~/.local/state/claude` -> `role: "history"`
-- `.opencode` -> `role: "settings"`
-- `~/.local/state/opencode` -> `role: "history"`
+- **10 YAML files** in `harnesses/` — one per harness with `id`, `name`, `detect.command`, `install` commands, and `config` mount entries
+- **`role` required** on every mount entry — prevents silent fallback to managed dir
+- **`config` derived** from `host` by stripping `~/` — no manual path duplication
+- **Platform overrides** — optional `platforms` section merges by `container` path match
+- **`buildArgName`** computed from `id` (e.g. `claude` → `INSTALL_CLAUDE`)
+- **`src/harness-loader.ts`** — Zod schemas, YAML parsing, platform resolution, `loadAllHarnessPacks()`
+- **`src/harness-packs.ts`** — now 3 lines: `export const HARNESS_PACKS = loadAllHarnessPacks()`
+- **`src/docker.ts`** — `HARNESS_BUILD_ARG_MAP` derived from packs via `getHarnessBuildArgMap()` instead of hardcoded dictionary
+
+Adding a harness is now: create `harnesses/new-harness.yaml`. No TypeScript changes needed.
 
 ### Other Source Changes
 
@@ -185,6 +195,7 @@ Single managed `Dockerfile` at repo root (166 lines):
 
 **New test files:**
 
+- `tests/harness-loader.test.ts` (7 tests) — YAML parsing, Zod validation, config derivation, platform overrides
 - `tests/mount-config.test.ts` (184 lines)
 - `tests/session.test.ts` (131 lines)
 - `tests/tool-permissions.test.ts` (223 lines)
@@ -194,8 +205,8 @@ Single managed `Dockerfile` at repo root (166 lines):
 - `tests/args.test.ts` — Removed build target tests
 - `tests/commands.test.ts` — Rewired for new config path, removed stateStore
 - `tests/config.test.ts` — Adapted for new config path
-- `tests/docker.test.ts` — Extensive changes for new build system
-- `tests/onboarding.test.ts` — Simplified build calls
+- `tests/docker.test.ts` — Extensive changes for new build system; mocked harness packs
+- `tests/onboarding.test.ts` — Simplified build calls; mocked harness packs
 - `tests/platform/paths.test.ts` — Updated path constants
 - `tests/setup.test.ts` — Removed migration tests, added managed file tests
 - `tests/tos.test.ts` — Adapted for new config path
@@ -203,6 +214,7 @@ Single managed `Dockerfile` at repo root (166 lines):
 ## Commit Log
 
 ```
+665927c refactor: config-driven harness system with YAML configs
 87514ef fix: mount permissions file read-only on top of writable settings dir
 0b86352 fix: remove readonly from claude/opencode .config settings dirs
 68ce453 fix: remove readonly from opencode/opentui .local/share data dirs

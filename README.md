@@ -17,20 +17,51 @@ Isolated environments for AI coding agents. One image, one container per project
 
 ## Supported tools
 
-The container supports multiple AI coding tools. Each tool is auto-detected at install and its config/history/auth files are mounted into the container. The following tools are supported:
+The container supports multiple AI coding tools. Each tool is defined in a YAML config file (`harnesses/*.yaml`) and auto-detected at install. The following tools are supported:
 
-| Tool                   | Install command                                   | Config dir           | Auth file        | History dir               | Instructions file |
-| ---------------------- | ------------------------------------------------- | -------------------- | ---------------- | ------------------------- | ----------------- |
-| **Claude Code**        | `curl -fsSL https://claude.ai/install.sh \| bash` | `~/.claude`          | `~/.claude.json` | `~/.local/state/claude`   | `CLAUDE.md`       |
-| **OpenCode**           | `npm install -g opencode-ai`                      | `~/.config/opencode` | —                | `~/.local/state/opencode` | `AGENTS.md`       |
-| **OpenAI Codex**       | `npm install -g @openai/codex`                    | `~/.codex`           | —                | —                         | `AGENTS.md`       |
-| **Pi**                 | `npm install -g @earendil-works/pi-coding-agent`  | `~/.pi`              | —                | —                         | —                 |
-| **Gemini CLI**         | `npm install -g @google/gemini-cli`               | `~/.gemini`          | —                | —                         | —                 |
-| **GitHub Copilot CLI** | `npm install -g @github/copilot`                  | `~/.copilot`         | —                | —                         | —                 |
-| **Grok Build**         | `curl -fsSL https://x.ai/cli/install.sh \| bash`  | `~/.grok`            | —                | —                         | —                 |
-| **Cursor CLI**         | `curl https://cursor.com/install -fsS \| bash`    | `~/.cursor`          | —                | —                         | —                 |
+| Tool                   | Install command                                                | Config dir                  | Auth file        | History dir               | Instructions file |
+| ---------------------- | -------------------------------------------------------------- | --------------------------- | ---------------- | ------------------------- | ----------------- |
+| **Claude Code**        | `curl -fsSL https://claude.ai/install.sh \| bash`              | `~/.claude`                 | `~/.claude.json` | `~/.local/state/claude`   | `CLAUDE.md`       |
+| **OpenCode**           | `npm install -g opencode-ai`                                   | `~/.config/opencode`        | —                | `~/.local/state/opencode` | `AGENTS.md`       |
+| **OpenAI Codex**       | `npm install -g @openai/codex`                                 | `~/.codex`                  | —                | —                         | `AGENTS.md`       |
+| **Pi**                 | `npm install -g @earendil-works/pi-coding-agent`               | `~/.pi`                     | —                | —                         | —                 |
+| **Gemini CLI**         | `npm install -g @google/gemini-cli`                            | `~/.gemini`                 | —                | —                         | —                 |
+| **GitHub Copilot CLI** | `npm install -g @github/copilot`                               | `~/.copilot`                | —                | —                         | —                 |
+| **Grok Build**         | `curl -fsSL https://x.ai/cli/install.sh \| bash`               | `~/.grok`                   | —                | —                         | —                 |
+| **Cursor CLI**         | `curl https://cursor.com/install -fsS \| bash`                 | `~/.cursor`                 | —                | —                         | —                 |
+| **Aerovato Nitro**     | `npm install -g @aerovato/nitro`                               | `~/.nitro`                  | —                | —                         | —                 |
+| **Antigravity CLI**    | `curl -fsSL https://antigravity.google/cli/install.sh \| bash` | `~/.gemini/antigravity-cli` | —                | —                         | —                 |
 
 The `auth_mode` and `history_mode` settings control how auth and history files are mounted. In **shared mode** (default), files are mounted directly from the host. In **per_project**/**isolated** mode, files are copied into the project config directory at first run.
+
+### Adding a new harness
+
+Harness definitions live in `harnesses/*.yaml`. To add a new tool, create a YAML file:
+
+```yaml
+id: my-tool
+name: My Tool
+detect:
+  command: my-tool
+install:
+  - "RUN npm install -g my-tool"
+config:
+  - host: ~/.my-tool
+    container: /root/.my-tool
+    kind: directory
+    role: data
+```
+
+The `role` field is required on every mount entry and controls where the config is sourced from:
+
+| Role       | Behavior                                                         |
+| ---------- | ---------------------------------------------------------------- |
+| `data`     | Always mounts from host path (persists across sessions)          |
+| `settings` | Mounts from project-specific managed copy (isolated per project) |
+| `auth`     | Host when `auth_mode: "shared"`, else managed copy               |
+| `history`  | Host when `history_mode: "shared"`, else managed copy            |
+
+After creating the file, run `container build` to install the tool in the image.
 
 ## Prerequisites
 
