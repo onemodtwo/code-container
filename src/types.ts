@@ -13,7 +13,7 @@ interface BaseConfigMount {
   host: string;
   config: string;
   mount: string;
-  role?: "auth" | "settings" | "history";
+  role?: "auth" | "settings" | "history" | "data";
   readonly?: boolean;
 }
 

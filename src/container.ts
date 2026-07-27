@@ -374,7 +374,12 @@ export function buildMounts(
     for (const c of pack.config) {
       const configRole = "role" in c ? c.role : undefined;
       let sourcePath: string;
-      if (configRole === "settings") {
+      if (configRole === "data") {
+        sourcePath = expandHomePath(c.host);
+        if (!fs.existsSync(sourcePath)) {
+          fs.mkdirSync(sourcePath, { recursive: true });
+        }
+      } else if (configRole === "settings") {
         ensureConfigExists(fsInstance, c);
         sourcePath = path.join(projectConfigsDir, c.config);
         if (!fs.existsSync(sourcePath)) {
