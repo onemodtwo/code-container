@@ -34,6 +34,8 @@ The container supports multiple AI coding tools. Each tool is defined in a YAML 
 
 The `auth_mode` and `history_mode` settings control how auth and history files are mounted. In **shared mode** (default), files are mounted directly from the host. In **per_project**/**isolated** mode, files are copied into the project config directory at first run.
 
+> **Warning — config path accuracy varies by tool.** Only OpenCode has been fully tested with verified config/auth/history paths. Claude Code's paths are best-guess based on public documentation (the author does not have Claude installed). The remaining harnesses (Codex, Pi, Gemini, Copilot, Grok, Cursor, Nitro, Antigravity) use default placeholder paths (`~/.toolname`) that may not reflect where the tool actually stores its config. If a harness does not work correctly, check the tool's documentation for its actual config directory and update `harnesses/<tool>.yaml` accordingly. Contributions to fix config paths are welcome.
+
 ### Adding a new harness
 
 Harness definitions live in `harnesses/*.yaml`. To add a new tool, create a YAML file:
